@@ -43,7 +43,7 @@ public class Listeners implements Listener {
 
   @EventHandler
   public void onPlayerDisconnect(PlayerDisconnectEvent evt) {
-    TELL_CACHE.remove(evt.getPlayer().getName().toLowerCase());
+    TELL_CACHE.remove(evt.getPlayer().getName().toLowerCase(Locale.ROOT));
     PROTECTION_CACHE.remove(evt.getPlayer().getName().toLowerCase());
     PROTECTION_LOBBY.remove(evt.getPlayer().getName().toLowerCase());
     PROPERTY_BACKUP.remove(evt.getPlayer().getName().toLowerCase());

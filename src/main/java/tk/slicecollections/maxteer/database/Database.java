@@ -63,7 +63,17 @@ public abstract class Database {
       cacheTimer.cancel();
     }
     cacheTimer = new Timer("mCore-role-cache", true);
-    cacheTimer.scheduleAtFixedRate(RoleCache.clearCache(), TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(60));
+    final java.util.TimerTask cacheClearTask = RoleCache.clearCache();
+    cacheTimer.scheduleAtFixedRate(new java.util.TimerTask() {
+      @Override
+      public void run() {
+        cacheClearTask.run();
+        Database database = instance;
+        if (database instanceof HikariDatabase) {
+          ((HikariDatabase) database).retryPendingSavesAsync();
+        }
+      }
+    }, TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(60));
   }
 
   public static synchronized void stopBackgroundTasks() {

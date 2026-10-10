@@ -216,15 +216,17 @@ public class HikariDatabase extends Database {
   @Override
   public void close() {
     this.executor.shutdown();
+    boolean terminated = false;
     try {
-      if (!this.executor.awaitTermination(30, TimeUnit.SECONDS)) {
+      terminated = this.executor.awaitTermination(30, TimeUnit.SECONDS);
+      if (!terminated) {
         List<Runnable> pending = this.executor.shutdownNow();
         for (Runnable runnable : pending) {
           if (runnable instanceof WriteTask) {
             ((WriteTask) runnable).fail(new IllegalStateException("Database shut down before the queued operation could run."));
           }
         }
-        this.executor.awaitTermination(2, TimeUnit.SECONDS);
+        terminated = this.executor.awaitTermination(2, TimeUnit.SECONDS);
       }
     } catch (InterruptedException ex) {
       List<Runnable> pending = this.executor.shutdownNow();
@@ -236,9 +238,13 @@ public class HikariDatabase extends Database {
       Thread.currentThread().interrupt();
       LOGGER.log(Level.WARNING, "Interrupted while stopping the database writer.", ex);
     } finally {
-      this.retryFailedProfileSavesOnShutdown();
+      if (terminated || this.executor.isTerminated()) {
+        this.retryFailedProfileSavesOnShutdown();
+      } else if (!this.failedProfileSaves.isEmpty()) {
+        LOGGER.severe("Database writer did not terminate; retained profile saves could not be retried safely.");
+      }
       if (!this.failedProfileSaves.isEmpty()) {
-        LOGGER.severe("Some profile save snapshots remain unpersisted after shutdown retry. Inspect the database and logs.");
+        LOGGER.severe("Some profile snapshots remain unpersisted at shutdown. Inspect database availability before restarting.");
       }
       this.closeConnection();
       Database.stopBackgroundTasks();
@@ -435,7 +441,10 @@ public class HikariDatabase extends Database {
               statement.setObject(index++, field.value);
             }
             statement.setString(index, name.toLowerCase(Locale.ROOT));
-            statement.executeUpdate();
+            int affected = statement.executeUpdate();
+            if (affected != 1) {
+              throw new SQLException("Profile update expected one row in " + table.name + " but affected " + affected + " row(s).");
+            }
           }
         }
         connection.commit();

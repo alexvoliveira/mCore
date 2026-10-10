@@ -39,27 +39,27 @@ public class DataContainer {
     this.updated = updated;
   }
 
-  public void addInt(int amount) {
+  public synchronized void addInt(int amount) {
     this.set(getAsInt() + amount);
   }
 
-  public void addLong(long amount) {
+  public synchronized void addLong(long amount) {
     this.set(getAsLong() + amount);
   }
 
-  public void addDouble(double amount) {
+  public synchronized void addDouble(double amount) {
     this.set(getAsDouble() + amount);
   }
 
-  public void removeInt(int amount) {
+  public synchronized void removeInt(int amount) {
     this.set(getAsInt() - amount);
   }
 
-  public void removeLong(long amount) {
+  public synchronized void removeLong(long amount) {
     this.set(getAsLong() - amount);
   }
 
-  public void removeDouble(double amount) {
+  public synchronized void removeDouble(double amount) {
     this.set(getAsDouble() - amount);
   }
 
