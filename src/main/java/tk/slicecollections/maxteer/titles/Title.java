@@ -1,10 +1,10 @@
 package tk.slicecollections.maxteer.titles;
 
-import com.mongodb.client.MongoCursor;
-import org.bson.Document;
+import javax.sql.rowset.CachedRowSet;
+import java.sql.SQLException;
+import java.util.logging.Level;
 import org.bukkit.inventory.ItemStack;
 import tk.slicecollections.maxteer.database.Database;
-import tk.slicecollections.maxteer.database.MongoDBDatabase;
 import tk.slicecollections.maxteer.player.Profile;
 import tk.slicecollections.maxteer.utils.BukkitUtils;
 import tk.slicecollections.maxteer.utils.StringUtils;
@@ -59,6 +59,7 @@ public class Title {
   private static final List<Title> TITLES = new ArrayList<>();
 
   public static void setupTitles() {
+    TITLES.clear();
     TITLES.add(new Title("tbk", "§cSentinela da Ponte", "&8Pode ser desbloqueado através do\n&8Desafio \"Assassino das Pontes\"&8."));
     TITLES.add(new Title("tbw", "§6Líder da Ponte", "&8Pode ser desbloqueado através do\n&8Desafio \"Glorioso sobre Pontes\"&8."));
     TITLES.add(new Title("tbp", "§ePontuador Mestre", "&8Pode ser desbloqueado através do\n&8Desafio \"Maestria em Pontuação\"&8."));
@@ -70,16 +71,15 @@ public class Title {
     TITLES.add(new Title("mmd", "§6Sherlock Holmes", "&8Pode ser desbloqueado através do\n&8Desafio \"Detetive\"&8."));
     TITLES.add(new Title("mmk", "§4Jef the Killer", "&8Pode ser desbloqueado através do\n&8Desafio \"Serial Killer\"&8."));
 
-    if (Database.getInstance() instanceof MongoDBDatabase) {
-      MongoDBDatabase database = ((MongoDBDatabase) Database.getInstance());
-
-      MongoCursor<Document> titles = database.getDatabase().getCollection("mCoreTitles").find().cursor();
-      while (titles.hasNext()) {
-        Document title = titles.next();
-        TITLES.add(new Title(title.getString("_id"), title.getString("name"), title.getString("description")));
+    try (CachedRowSet titles = Database.getInstance().query("SELECT `id`, `name`, `description` FROM `mCoreTitles` ORDER BY `id`")) {
+      while (titles != null && titles.next()) {
+        String id = titles.getString("id");
+        if (getById(id) == null) {
+          TITLES.add(new Title(id, titles.getString("name"), titles.getString("description")));
+        }
       }
-
-      titles.close();
+    } catch (SQLException ex) {
+      Database.LOGGER.log(Level.WARNING, "Could not load custom titles from MySQL.", ex);
     }
   }
 

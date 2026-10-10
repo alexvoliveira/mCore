@@ -6,6 +6,8 @@ import tk.slicecollections.maxteer.database.cache.RoleCache;
 import tk.slicecollections.maxteer.database.data.DataContainer;
 import tk.slicecollections.maxteer.database.exception.ProfileLoadException;
 
+import javax.sql.rowset.CachedRowSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
@@ -42,24 +44,37 @@ public abstract class Database {
 
   public abstract String exists(String name);
 
+  public abstract CachedRowSet query(String sql, Object... parameters);
+
+  public abstract void update(String sql, Object... parameters);
+
+  public abstract void execute(String sql, Object... parameters);
+
   private static Database instance;
   public static Logger LOGGER;
+  private static Timer cacheTimer;
 
-  public static void setupDatabase(String type, String mysqlHost, String mysqlPort, String mysqlDbname, String mysqlUsername, String mysqlPassword, boolean hikari, boolean mariadb,
+  /**
+   * Creates the only supported production persistence implementation: MySQL via HikariCP.
+   * Legacy config arguments are accepted temporarily for backward compatibility, but ignored.
+   */
+  @Deprecated
+  public static synchronized void setupDatabase(String type, String mysqlHost, String mysqlPort, String mysqlDbname, String mysqlUsername, String mysqlPassword, boolean hikari, boolean mariadb,
     String mongoURL) {
     LOGGER = Manager.BUNGEE ? tk.slicecollections.maxteer.bungee.Bungee.getInstance().getLogger() : tk.slicecollections.maxteer.Core.getInstance().getLogger();
-    if (type.equalsIgnoreCase("mongodb")) {
-      instance = new MongoDBDatabase(mongoURL);
-    } else {
-      if (hikari) {
-        instance = new HikariDatabase(mysqlHost, mysqlPort, mysqlDbname, mysqlUsername, mysqlPassword, mariadb);
-      } else {
-        instance = new MySQLDatabase(mysqlHost, mysqlPort, mysqlDbname, mysqlUsername, mysqlPassword, mariadb);
-      }
+    instance = new HikariDatabase(mysqlHost, mysqlPort, mysqlDbname, mysqlUsername, mysqlPassword);
+    if (cacheTimer != null) {
+      cacheTimer.cancel();
     }
+    cacheTimer = new Timer("mCore-role-cache", true);
+    cacheTimer.scheduleAtFixedRate(RoleCache.clearCache(), TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(60));
+  }
 
-    // Limpeza do Cache de Rank/Nome da classe de Role.
-    new Timer().scheduleAtFixedRate(RoleCache.clearCache(), TimeUnit.SECONDS.toMillis(60), TimeUnit.SECONDS.toMillis(60));
+  public static synchronized void stopBackgroundTasks() {
+    if (cacheTimer != null) {
+      cacheTimer.cancel();
+      cacheTimer = null;
+    }
   }
 
   public static Database getInstance() {

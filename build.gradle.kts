@@ -29,12 +29,8 @@ dependencies {
     compileOnly("me.clip:placeholderapi:2.10.5")
 
     implementation("com.zaxxer:HikariCP:3.4.5")
-    implementation("org.mariadb.jdbc:mariadb-java-client:2.6.0")
     implementation("com.mysql:mysql-connector-j:8.0.33")
 
-    // Transitional: retained because the current source still uses MongoDB conversion/titles.
-    implementation("org.mongodb:mongodb-driver-sync:4.0.5")
-    implementation("io.socket:socket.io-client:1.0.0")
 }
 
 sourceSets {

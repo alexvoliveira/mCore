@@ -32,24 +32,26 @@ public class HikariDatabase extends Database {
   private String dbname;
   private String username;
   private String password;
-  private boolean mariadb;
-
   private HikariDataSource dataSource;
   private ExecutorService executor;
 
-  public HikariDatabase(String host, String port, String dbname, String username, String password, boolean mariadb) {
+  public HikariDatabase(String host, String port, String dbname, String username, String password) {
     this.host = host;
     this.port = port;
     this.dbname = dbname;
     this.username = username;
     this.password = password;
-    this.mariadb = mariadb;
-
     this.openConnection();
-    this.executor = Executors.newCachedThreadPool();
+    this.executor = Executors.newSingleThreadExecutor(runnable -> {
+      Thread thread = new Thread(runnable, "mCore-db-writer");
+      thread.setDaemon(true);
+      return thread;
+    });
 
     this.update(
       "CREATE TABLE IF NOT EXISTS `mCoreNetworkBooster` (`id` VARCHAR(32), `booster` TEXT, `multiplier` DOUBLE, `expires` LONG, PRIMARY KEY(`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;");
+    this.update(
+      "CREATE TABLE IF NOT EXISTS `mCoreTitles` (`id` VARCHAR(64) NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;");
 
     DataTable.listTables().forEach(table -> {
       this.update(table.getInfo().create());
@@ -100,7 +102,7 @@ public class HikariDatabase extends Database {
 
   @Override
   public String getRankAndName(String player) {
-    try (CachedRowSet rs = query("SELECT `name`, `role` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", player.toLowerCase())) {
+    try (CachedRowSet rs = query("SELECT `name`, `role` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", player.toLowerCase(Locale.ROOT))) {
       if (rs != null) {
         String result = rs.getString("role") + " : " + rs.getString("name");
         RoleCache.setCache(player, rs.getString("role"), rs.getString("name"));
@@ -168,8 +170,25 @@ public class HikariDatabase extends Database {
 
   @Override
   public void close() {
-    this.executor.shutdownNow().forEach(Runnable::run);
-    this.closeConnection();
+    this.executor.shutdown();
+    try {
+      if (!this.executor.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS)) {
+        java.util.List<Runnable> pending = this.executor.shutdownNow();
+        if (!pending.isEmpty()) {
+          LOGGER.warning("Discarded " + pending.size() + " queued database operation(s) during shutdown.");
+        }
+        if (!this.executor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
+          LOGGER.warning("Database writer did not stop within the shutdown deadline.");
+        }
+      }
+    } catch (InterruptedException ex) {
+      this.executor.shutdownNow();
+      Thread.currentThread().interrupt();
+      LOGGER.log(Level.WARNING, "Interrupted while stopping the database writer.", ex);
+    } finally {
+      this.closeConnection();
+      Database.stopBackgroundTasks();
+    }
   }
 
   @Override
@@ -179,7 +198,7 @@ public class HikariDatabase extends Database {
       Map<String, DataContainer> containerMap = new LinkedHashMap<>();
       tableMap.put(table.getInfo().name(), containerMap);
 
-      try (CachedRowSet rs = this.query(table.getInfo().select(), name.toLowerCase())) {
+      try (CachedRowSet rs = this.query(table.getInfo().select(), name.toLowerCase(Locale.ROOT))) {
         if (rs != null) {
           for (int collumn = 2; collumn <= rs.getMetaData().getColumnCount(); collumn++) {
             containerMap.put(rs.getMetaData().getColumnName(collumn), new DataContainer(rs.getObject(collumn)));
@@ -230,7 +249,7 @@ public class HikariDatabase extends Database {
       query.deleteCharAt(query.length() - 1);
       query.deleteCharAt(query.length() - 1);
       query.append(" WHERE LOWER(`name`) = ?");
-      values.add(name.toLowerCase());
+      values.add(name.toLowerCase(Locale.ROOT));
       if (async) {
         this.execute(query.toString(), values.toArray());
       } else {
@@ -243,7 +262,7 @@ public class HikariDatabase extends Database {
   @Override
   public String exists(String name) {
     try {
-      return this.query("SELECT `name` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", name.toLowerCase()).getString("name");
+      return this.query("SELECT `name` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", name.toLowerCase(Locale.ROOT)).getString("name");
     } catch (Exception ex) {
       return null;
     }
@@ -252,13 +271,10 @@ public class HikariDatabase extends Database {
   public void openConnection() {
     HikariConfig config = new HikariConfig();
     config.setPoolName("mConnectionPool");
-    config.setMaximumPoolSize(32);
-    config.setConnectionTimeout(30000L);
-    config.setDriverClassName(this.mariadb ? "org.mariadb.jdbc.Driver" : "com.mysql.jdbc.Driver");
-    String jdbcUrl = (this.mariadb ? "jdbc:mariadb://" : "jdbc:mysql://") + this.host + ":" + this.port + "/" + this.dbname +
-      (this.mariadb
-        ? "?useSsl=true&trustServerCertificate=false&characterEncoding=UTF-8"
-        : "?sslMode=VERIFY_IDENTITY&useUnicode=yes&characterEncoding=UTF-8");
+    // Keep HikariCP defaults unless workload measurements justify pool tuning.
+    config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    String jdbcUrl = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.dbname +
+      "?sslMode=VERIFY_IDENTITY&useUnicode=yes&characterEncoding=UTF-8";
     config.setJdbcUrl(jdbcUrl);
     config.setUsername(this.username);
     config.setPassword(this.password);
@@ -282,6 +298,7 @@ public class HikariDatabase extends Database {
     return !this.dataSource.isClosed();
   }
 
+  @Override
   public void update(String sql, Object... vars) {
     Connection connection = null;
     PreparedStatement ps = null;
@@ -310,6 +327,7 @@ public class HikariDatabase extends Database {
     }
   }
 
+  @Override
   public void execute(String sql, Object... vars) {
     executor.execute(() -> {
       update(sql, vars);
@@ -358,6 +376,7 @@ public class HikariDatabase extends Database {
     return id;
   }
 
+  @Override
   public CachedRowSet query(String query, Object... vars) {
     Connection connection = null;
     PreparedStatement ps = null;

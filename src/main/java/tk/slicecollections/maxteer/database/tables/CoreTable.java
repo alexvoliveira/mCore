@@ -1,8 +1,6 @@
 package tk.slicecollections.maxteer.database.tables;
 
 import tk.slicecollections.maxteer.database.Database;
-import tk.slicecollections.maxteer.database.HikariDatabase;
-import tk.slicecollections.maxteer.database.MySQLDatabase;
 import tk.slicecollections.maxteer.database.data.DataContainer;
 import tk.slicecollections.maxteer.database.data.DataTable;
 import tk.slicecollections.maxteer.database.data.interfaces.DataTableInfo;
@@ -25,14 +23,8 @@ public class CoreTable extends DataTable {
 
   @Override
   public void init(Database database) {
-    if (database instanceof MySQLDatabase) {
-      if (((MySQLDatabase) database).query("SHOW COLUMNS FROM `mCoreProfile` LIKE 'cash'") == null) {
-        ((MySQLDatabase) database).execute("ALTER TABLE `mCoreProfile` ADD `cash` LONG AFTER `name`");
-      }
-    } else if (database instanceof HikariDatabase) {
-      if (((HikariDatabase) database).query("SHOW COLUMNS FROM `mCoreProfile` LIKE 'cash'") == null) {
-        ((HikariDatabase) database).execute("ALTER TABLE `mCoreProfile` ADD `cash` LONG AFTER `name`");
-      }
+    if (database.query("SHOW COLUMNS FROM `mCoreProfile` LIKE ?", "cash") == null) {
+      database.update("ALTER TABLE `mCoreProfile` ADD `cash` LONG AFTER `name`");
     }
   }
 
