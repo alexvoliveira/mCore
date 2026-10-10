@@ -3,16 +3,13 @@ package tk.slicecollections.maxteer.bungee.listener;
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import net.md_5.bungee.ServerConnection;
-import net.md_5.bungee.UserConnection;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
+import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.event.*;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.plugin.PluginManager;
-import net.md_5.bungee.connection.InitialHandler;
-import net.md_5.bungee.connection.LoginResult;
 import net.md_5.bungee.event.EventHandler;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -26,13 +23,17 @@ import tk.slicecollections.maxteer.utils.StringUtils;
 
 import javax.sql.rowset.CachedRowSet;
 import java.util.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.logging.Level;
 
 /**
  * @author Maxter
  */
 public class Listeners implements Listener {
 
-  private static final Map<String, LoginResult.Property[]> PROPERTY_BACKUP = new HashMap<>();
+  private static final Map<String, Object> PROPERTY_BACKUP = new HashMap<>();
   private static final Map<String, Long> PROTECTION_LOBBY = new HashMap<>();
   private static final Map<String, Boolean> TELL_CACHE = new HashMap<>(), PROTECTION_CACHE = new HashMap<>();
   private static final FieldAccessor<Map> COMMAND_MAP = Accessors.getField(PluginManager.class, "commandMap", Map.class);
@@ -53,24 +54,30 @@ public class Listeners implements Listener {
 
   @EventHandler
   public void onPluginMessage(PluginMessageEvent evt) {
-    if (evt.getSender() instanceof ServerConnection && evt.getReceiver() instanceof ProxiedPlayer) {
+    if (evt.getSender() instanceof Server && evt.getReceiver() instanceof ProxiedPlayer) {
       if (evt.getTag().equalsIgnoreCase("mCore")) {
         ProxiedPlayer player = (ProxiedPlayer) evt.getReceiver();
 
         ByteArrayDataInput in = ByteStreams.newDataInput(evt.getData());
         String subChannel = in.readUTF();
         if (subChannel.equalsIgnoreCase("FAKE_SKIN")) {
-          LoginResult profile = ((InitialHandler) player.getPendingConnection()).getLoginProfile();
+          Object profile = this.getLoginProfile(player);
           if (profile != null) {
+            String name = player.getName().toLowerCase(Locale.ROOT);
             try {
               String[] data = in.readUTF().split(":");
-              PROPERTY_BACKUP.put(player.getName().toLowerCase(), profile.getProperties());
+              PROPERTY_BACKUP.put(name, this.getProperties(profile));
               this.modifyProperties(profile, data);
             } catch (Exception ex) {
-              LoginResult.Property[] properties = PROPERTY_BACKUP.remove(player.getName().toLowerCase());
+              Object properties = PROPERTY_BACKUP.remove(name);
               if (properties != null) {
-                profile.setProperties(properties);
+                try {
+                  this.setProperties(profile, properties);
+                } catch (Exception restoreError) {
+                  ex.addSuppressed(restoreError);
+                }
               }
+              Bungee.getInstance().getLogger().log(Level.WARNING, "Could not apply fake skin to " + player.getName() + ".", ex);
             }
           }
         }
@@ -98,9 +105,13 @@ public class Listeners implements Listener {
       out.writeUTF(skin);
       evt.getServer().sendData("mCore", out.toByteArray());
 
-      LoginResult profile = ((InitialHandler) player.getPendingConnection()).getLoginProfile();
-      if (profile != null) {
-        this.modifyProperties(profile, skin.split(":"));
+      try {
+        Object profile = this.getLoginProfile(player);
+        if (profile != null) {
+          this.modifyProperties(profile, skin.split(":"));
+        }
+      } catch (Exception ex) {
+        Bungee.getInstance().getLogger().log(Level.WARNING, "Could not apply fake skin to " + player.getName() + ".", ex);
       }
     }
   }
@@ -109,7 +120,7 @@ public class Listeners implements Listener {
   public void onChat(ChatEvent evt) {
     if (evt.getSender() instanceof ProxiedPlayer) {
       if (evt.isCommand()) {
-        ProxiedPlayer player = (UserConnection) evt.getSender();
+        ProxiedPlayer player = (ProxiedPlayer) evt.getSender();
         String[] args = evt.getMessage().replace("/", "").split(" ");
 
         String command = args[0];
@@ -135,18 +146,67 @@ public class Listeners implements Listener {
     }
   }
 
-  private void modifyProperties(LoginResult profile, String[] data) {
-    List<LoginResult.Property> properties = new ArrayList<>();
-    for (LoginResult.Property property : profile.getProperties() == null ? new ArrayList<LoginResult.Property>() : Arrays.asList(profile.getProperties())) {
-      if (property.getName().equalsIgnoreCase("textures")) {
-        continue;
-      }
+  /*
+   * BungeeCord 1.8 exposes skin properties through implementation classes rather
+   * than its public API. Keep that compatibility boundary isolated in reflection
+   * so this module can compile against the published API without packaging internals.
+   */
+  private Object getLoginProfile(ProxiedPlayer player) throws ReflectiveOperationException {
+    Object pendingConnection = player.getPendingConnection();
+    Method method = pendingConnection.getClass().getMethod("getLoginProfile");
+    return method.invoke(pendingConnection);
+  }
 
-      properties.add(property);
+  private Object getProperties(Object profile) throws ReflectiveOperationException {
+    return profile.getClass().getMethod("getProperties").invoke(profile);
+  }
+
+  private Method findSetProperties(Object profile) throws NoSuchMethodException {
+    for (Method method : profile.getClass().getMethods()) {
+      if (method.getName().equals("setProperties")
+          && method.getParameterTypes().length == 1
+          && method.getParameterTypes()[0].isArray()) {
+        return method;
+      }
+    }
+    throw new NoSuchMethodException("BungeeCord login profile does not expose setProperties(array).");
+  }
+
+  private void setProperties(Object profile, Object properties) throws ReflectiveOperationException {
+    findSetProperties(profile).invoke(profile, properties);
+  }
+
+  private void modifyProperties(Object profile, String[] data) throws ReflectiveOperationException {
+    if (data == null || data.length < 2) {
+      throw new IllegalArgumentException("Fake skin payload must contain texture value and signature.");
     }
 
-    properties.add(new LoginResult.Property("textures", data[0], data[1]));
-    profile.setProperties(properties.toArray(new LoginResult.Property[0]));
+    Object current = this.getProperties(profile);
+    Method setter = this.findSetProperties(profile);
+    Class<?> propertyType = setter.getParameterTypes()[0].getComponentType();
+    List<Object> properties = new ArrayList<>();
+
+    if (current != null) {
+      if (!current.getClass().isArray()) {
+        throw new IllegalStateException("BungeeCord login properties are not an array.");
+      }
+      for (int i = 0; i < Array.getLength(current); i++) {
+        Object property = Array.get(current, i);
+        Object propertyName = property.getClass().getMethod("getName").invoke(property);
+        if (!(propertyName instanceof String) || !((String) propertyName).equalsIgnoreCase("textures")) {
+          properties.add(property);
+        }
+      }
+    }
+
+    Constructor<?> constructor = propertyType.getConstructor(String.class, String.class, String.class);
+    properties.add(constructor.newInstance("textures", data[0], data[1]));
+
+    Object replacement = Array.newInstance(propertyType, properties.size());
+    for (int i = 0; i < properties.size(); i++) {
+      Array.set(replacement, i, properties.get(i));
+    }
+    setter.invoke(profile, replacement);
   }
 
   private boolean canReceiveTell(String name) {

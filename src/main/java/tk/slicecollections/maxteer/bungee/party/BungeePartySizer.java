@@ -15,7 +15,7 @@ public class BungeePartySizer {
 
   static {
     CONFIG = Bungee.getInstance().getConfig();
-    if (!CONFIG.contains("party")) {
+    if (CONFIG.get("party") == null) {
       CONFIG.set("party.size", new HashMap<>());
       CONFIG.set("party.size.role_master", 20);
       CONFIG.set("party.size.role_youtuber", 15);
