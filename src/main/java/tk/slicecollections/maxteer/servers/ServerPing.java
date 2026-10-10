@@ -104,9 +104,9 @@ public class ServerPing {
     this.online = players.get("online").getAsInt();
   }
 
-  private String motd = null;
-  private int max = 0;
-  private int online = 0;
+  private volatile String motd = null;
+  private volatile int max = 0;
+  private volatile int online = 0;
 
   private int readVarInt(DataInputStream in) throws IOException {
     int i = 0, j = 0;

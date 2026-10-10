@@ -9,6 +9,7 @@ import tk.slicecollections.maxteer.servers.balancer.Server;
 import tk.slicecollections.maxteer.servers.balancer.type.LeastConnection;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Maxter
@@ -55,7 +56,7 @@ public class ServerItem {
   private static final List<ServerItem> SERVERS = new ArrayList<>();
   public static final MConfig CONFIG = Core.getInstance().getConfig("servers");
   public static final List<Integer> DISABLED_SLOTS = CONFIG.getIntegerList("disabled-slots");
-  public static final Map<String, Integer> SERVER_COUNT = new HashMap<>();
+  public static final Map<String, Integer> SERVER_COUNT = new ConcurrentHashMap<>();
 
   public static void setupServers() {
     for (String key : CONFIG.getSection("items").getKeys(false)) {

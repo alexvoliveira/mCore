@@ -20,12 +20,23 @@ public class BoostersContainer extends AbstractContainer {
   public BoostersContainer(DataContainer dataContainer) {
     super(dataContainer);
     JSONObject boosters = this.dataContainer.getAsJsonObject();
-    if (!boosters.containsKey("0")) {
+    boolean changed = false;
+    if (!(boosters.get("0") instanceof JSONArray)) {
       boosters.put("0", new JSONArray());
-      boosters.put("1", new JSONArray());
-      boosters.put("2", "none");
+      changed = true;
     }
-    this.dataContainer.set(boosters.toString());
+    if (!(boosters.get("1") instanceof JSONArray)) {
+      boosters.put("1", new JSONArray());
+      changed = true;
+    }
+    if (!(boosters.get("2") instanceof String)) {
+      boosters.put("2", "none");
+      changed = true;
+    }
+    if (changed) {
+      this.dataContainer.set(boosters.toString());
+    }
+    boosters.clear();
   }
 
   public boolean enable(Booster booster) {
@@ -69,18 +80,24 @@ public class BoostersContainer extends AbstractContainer {
 
   public String getEnabled() {
     JSONObject boosters = this.dataContainer.getAsJsonObject();
-    String current = (String) boosters.get("2");
-    if (current.equals("none")) {
+    Object raw = boosters.get("2");
+    if (!(raw instanceof String) || "none".equals(raw)) {
       boosters.clear();
       return null;
     }
 
-    String[] splitted = current.split(":");
-    double multiplier = Double.parseDouble(splitted[0]);
-    long expires = Long.parseLong(splitted[1]);
-    if (expires > System.currentTimeMillis()) {
-      boosters.clear();
-      return multiplier + ":" + expires;
+    String[] splitted = ((String) raw).split(":");
+    try {
+      if (splitted.length == 2) {
+        double multiplier = Double.parseDouble(splitted[0]);
+        long expires = Long.parseLong(splitted[1]);
+        if (Double.isFinite(multiplier) && multiplier > 0 && expires > System.currentTimeMillis()) {
+          boosters.clear();
+          return multiplier + ":" + expires;
+        }
+      }
+    } catch (NumberFormatException ex) {
+      // Invalid persisted booster data is reset below; it must not crash player interactions.
     }
 
     boosters.put("2", "none");
