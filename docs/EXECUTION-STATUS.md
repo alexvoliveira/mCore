@@ -1,30 +1,33 @@
-# mCore — estado da refatoração (etapa inicial)
+# mCore — estado da refatoração
 
-Esta branch contém uma primeira etapa de hardening e preparação de build. **Não é a refatoração completa e não deve ser implantada diretamente em produção.**
+Esta branch está em refatoração incremental e **não deve ser implantada em produção até a validação completa do build e dos dados**.
 
-## Incluído nesta etapa
+## Implementado no código de produção
 
-- Desativa a instalação automática de JAR baixado enquanto não houver verificação criptográfica da origem e do artefato.
-- Remove chamadas que encerravam todo o processo Java em falhas do plugin ou da conexão MySQL.
-- Ativa configuração TLS com validação de identidade/certificado nos caminhos JDBC MySQL/MariaDB; a implantação depende de certificados e truststore válidos.
-- Faz a preferência respeitar o valor padrão informado quando o perfil/chave estiver ausente ou inválido.
-- Valida identificadores de tabela e coluna de leaderboard contra os schemas registrados.
-- Fecha o recurso de banco no desligamento do processo Bungee.
-- Adiciona configuração inicial Gradle Kotlin DSL/Shadow e mantém `pom.xml` para rollback.
+- Um único backend de persistência: MySQL por HikariCP.
+- Remoção das classes de produção `MongoDBDatabase`, `MySQLDatabase` sem pool e do conversor online MySQL→MongoDB.
+- Títulos personalizados lidos da tabela SQL `mCoreTitles`; tabelas de perfil continuam em `mCoreProfile`, `mCoreSkyWars`, `mCoreTheBridge`, `mCoreMurder` e `mCoreNetworkBooster`.
+- Configuração JDBC com `sslMode=VERIFY_IDENTITY` e nome de driver do Connector/J 8.
+- Consultas de alterações legadas de schema encaminhadas pelo contrato comum `Database`.
+- Escrita assíncrona serializada por um executor único para manter a ordem de submissão de operações; a análise de perda de atualizações e backpressure ainda precisa ser concluída.
+- Comando de conversão online removido; há agora um importador offline baseado em exports JSONL, sem MongoDB driver no plugin.
+- Desativação de instalação automática de JARs sem validação criptográfica e de encerramento do processo com `System.exit(0)`.
+- Scaffold Gradle Kotlin DSL e documentação inicial.
 
-## Validação realizada
+## Evidências e validação
 
-- Confirmadas as âncoras exatas nas fontes remotas antes de editar.
-- Correções aplicadas numa branch separada de `main`.
-- **Build Gradle não executado.** Este ambiente não possui Gradle/Wrapper pronto nem os artefatos de implementação CraftBukkit/NMS e BungeeCord compatíveis instalados em `mavenLocal()`.
-- Testes de integração em Spigot/Bukkit 1.8.8, BungeeCord, MySQL e MariaDB permanecem pendentes.
+- Commits publicados e diff remoto conferidos na branch de revisão.
+- A compilação Gradle **não foi executada**: este ambiente não consegue clonar o repositório por indisponibilidade de DNS para `github.com`, e não dispõe de Gradle Wrapper gerado nem dos artefatos legados Spigot/NMS validados.
+- Os testes de integração com Spigot/Bukkit 1.8.8, NMS `v1_8_R3`, BungeeCord, MySQL e migração de dados não foram executados.
+- O `pom.xml` permanece temporariamente para referência/rollback até que o build Gradle possa ser validado. Ele ainda precisa ser eliminado conforme o plano original.
 
-## Pendências que bloqueiam a refatoração integral
+## Pendências que bloqueiam a conclusão
 
-1. Migrar dados e funcionalidades dependentes de MongoDB, incluindo títulos personalizados e conversão de perfis, antes de remover MongoDB.
-2. Implementar um runner versionado de migrações de banco com histórico, transações quando suportadas, validação prévia e rollback documentado.
-3. Auditar concorrência e ciclo de vida de perfis, filas e gravações assíncronas.
-4. Validar a compilação, testes e execução com as versões legadas exatas.
-5. Só então considerar remover o Maven e promover a branch para `main`.
+1. Executar `./gradlew clean build` em ambiente com JDK/Gradle compatíveis e artefatos corretos de Spigot 1.8.8/NMS e BungeeCord 1.8.
+2. Validar o importador com backups representativos, comparando contagens, perfis, títulos, boosters e amostras de estatísticas.
+3. Revisar atomicidade, erro em escritas assíncronas, fechamento do executor e concorrência de `Profile`/fila.
+4. Testar ciclo de vida de pré-login, entrada/saída, salvamento, transferência de servidores e desligamento.
+5. Remover o `pom.xml` e os resíduos de build antigos somente após a validação do Gradle.
+6. Fazer revisão final de referências remanescentes, SQL dinâmico e compatibilidade de APIs antigas.
 
-**Não mesclar ou implantar esta etapa até concluir as pendências e validar o build num ambiente compatível.**
+A branch ainda não foi mesclada a `main`.
