@@ -1,0 +1,73 @@
+plugins {
+    java
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+}
+
+group = "tk.slicecollections.maxteer"
+version = "4.1"
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+repositories {
+    // CraftBukkit/NMS 1.8.8 and internal Bungee classes need matching legacy artifacts in mavenLocal().
+    mavenLocal()
+    mavenCentral()
+    maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
+    maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots/") }
+    maven { url = uri("https://repo.dmulloy2.net/nexus/repository/public/") }
+    maven { url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/") }
+}
+
+dependencies {
+    compileOnly("org.spigotmc:spigot:1.8.8-R0.1-SNAPSHOT")
+    compileOnly("net.md-5:bungeecord-api:1.8-SNAPSHOT")
+    compileOnly("net.md-5:bungeecord-proxy:1.8-SNAPSHOT")
+    compileOnly("com.comphenix.protocol:ProtocolLib:4.5.0")
+    compileOnly("me.clip:placeholderapi:2.10.5")
+
+    implementation("com.zaxxer:HikariCP:3.4.5")
+    implementation("org.mariadb.jdbc:mariadb-java-client:2.6.0")
+    implementation("com.mysql:mysql-connector-j:8.0.33")
+
+    // Transitional: retained because the current source still uses MongoDB conversion/titles.
+    implementation("org.mongodb:mongodb-driver-sync:4.0.5")
+    implementation("io.socket:socket.io-client:1.0.0")
+}
+
+sourceSets {
+    main {
+        java { setSrcDirs(listOf("src/main/java")) }
+        resources { setSrcDirs(listOf("src/main/resources")) }
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
+tasks.processResources {
+    filteringCharset = "UTF-8"
+    filesMatching(listOf("plugin.yml", "bungee.yml")) {
+        expand(mapOf(
+            "artifactId" to project.name,
+            "version" to project.version.toString(),
+            "mainBukkit" to "tk.slicecollections.maxteer.Core",
+            "mainBungee" to "tk.slicecollections.maxteer.bungee.Bungee"
+        ))
+    }
+}
+
+tasks.shadowJar {
+    archiveFileName.set("mCore.jar")
+    configurations = listOf(project.configurations.runtimeClasspath.get())
+    mergeServiceFiles()
+    // Preserve service descriptors; only remove invalid/irrelevant signature files.
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
+}
+
+tasks.assemble {
+    dependsOn(tasks.shadowJar)
+}
