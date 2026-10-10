@@ -17,8 +17,8 @@ Esta branch está em refatoração incremental e **não deve ser implantada em p
 ## Evidências e validação
 
 - Commits publicados e diff remoto conferidos na branch de revisão.
-- A compilação Gradle **não foi executada**: este ambiente não consegue clonar o repositório por indisponibilidade de DNS para `github.com`, e não dispõe de Gradle Wrapper gerado nem dos artefatos legados Spigot/NMS validados.
-- Os testes de integração com Spigot/Bukkit 1.8.8, NMS `v1_8_R3`, BungeeCord, MySQL e migração de dados não foram executados.
+- A compilação Gradle neste ambiente de edição **não foi executada**. Foi adicionado um workflow do GitHub Actions que gera os artefatos Spigot 1.8.8 e executa o Wrapper/testes; o resultado precisa ser consultado antes de considerar a validação concluída.
+- Os testes de integração com Spigot/Bukkit 1.8.8, NMS `v1_8_R3`, BungeeCord, MySQL e migração de dados não foram executados; testes unitários da ferramenta offline foram adicionados ao workflow.
 - O `pom.xml` permanece temporariamente para referência/rollback até que o build Gradle possa ser validado. Ele ainda precisa ser eliminado conforme o plano original.
 
 ## Pendências que bloqueiam a conclusão
