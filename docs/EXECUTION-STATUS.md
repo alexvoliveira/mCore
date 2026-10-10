@@ -27,7 +27,8 @@ Esta branch está em refatoração incremental e **não deve ser implantada em p
 2. Validar o importador com backups representativos, comparando contagens, perfis, títulos, boosters e amostras de estatísticas.
 3. Revisar atomicidade, erro em escritas assíncronas, fechamento do executor e concorrência de `Profile`/fila.
 4. Testar ciclo de vida de pré-login, entrada/saída, salvamento, transferência de servidores e desligamento.
-5. Remover o `pom.xml` e os resíduos de build antigos somente após a validação do Gradle.
+5. Confirmar o resultado do workflow de build/testes; um job em execução não conta como validação aprovada.
+6. Remover o `pom.xml` e os resíduos de build antigos somente após a validação do Gradle.
 6. Fazer revisão final de referências remanescentes, SQL dinâmico e compatibilidade de APIs antigas.
 
 A branch ainda não foi mesclada a `main`.

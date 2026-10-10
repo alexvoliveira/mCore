@@ -99,10 +99,15 @@ public class Queue {
                     this.readyToConnect = true;
                   } else {
                     Core.getInstance().getLogger().log(Level.WARNING,
-                      "O salvamento do perfil falhou; a transferência será tentada novamente.", failure);
+                      "O salvamento do perfil falhou; a transferência foi cancelada para proteger os dados.", failure);
                     if (target.player != null && target.player.isOnline()) {
-                      target.player.sendMessage("§cNão foi possível salvar seus dados. Tentaremos novamente antes de conectar.");
+                      target.player.sendMessage("§cNão foi possível salvar seus dados. A transferência foi cancelada; tente novamente mais tarde.");
                     }
+                    players.remove(target);
+                    target.destroy();
+                    this.current = null;
+                    this.saving = false;
+                    this.readyToConnect = false;
                   }
                 });
               } catch (RuntimeException ex) {

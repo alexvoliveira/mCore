@@ -18,7 +18,7 @@ sh scripts/bootstrap-gradle-wrapper.sh
 ./gradlew clean build
 ```
 
-O Wrapper ainda não está incluído nesta etapa porque não havia instalação de Gradle disponível para gerá-lo. Após gerar `gradlew`, `gradlew.bat` e `gradle/wrapper/gradle-wrapper.jar`, revise-os e adicione-os ao controle de versão.
+O Gradle Wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` e propriedades com checksum da distribuição) está versionado. Mantenha os scripts e o JAR alinhados com a versão definida em `gradle-wrapper.properties`.
 
 O JAR de saída configurado é `build/libs/mCore.jar`. O `pom.xml` fica preservado enquanto a compilação Gradle não for validada. Não remova o Maven apenas por o arquivo Gradle existir.
 

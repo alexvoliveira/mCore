@@ -1,5 +1,9 @@
 name: Legacy build validation
 
+concurrency:
+  group: legacy-build-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
