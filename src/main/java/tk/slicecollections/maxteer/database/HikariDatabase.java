@@ -157,6 +157,23 @@ public class HikariDatabase extends Database {
   }
 
   @Override
+  public CompletableFuture<Boolean> getPreferenceAsync(String player, String id, boolean def) {
+    CompletableFuture<Boolean> future = new CompletableFuture<>();
+    try {
+      this.executor.execute(() -> {
+        try {
+          future.complete(this.getPreference(player, id, def));
+        } catch (Exception ex) {
+          future.completeExceptionally(ex);
+        }
+      });
+    } catch (RejectedExecutionException ex) {
+      future.completeExceptionally(ex);
+    }
+    return future;
+  }
+
+  @Override
   public List<String[]> getLeaderBoard(String table, String... columns) {
     List<String[]> result = new ArrayList<>();
     if (columns == null || columns.length == 0) {

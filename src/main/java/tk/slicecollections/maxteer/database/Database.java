@@ -27,6 +27,8 @@ public abstract class Database {
 
   public abstract boolean getPreference(String player, String id, boolean def);
 
+  public abstract CompletableFuture<Boolean> getPreferenceAsync(String player, String id, boolean def);
+
   public abstract List<String[]> getLeaderBoard(String table, String... columns);
 
   public abstract void close();

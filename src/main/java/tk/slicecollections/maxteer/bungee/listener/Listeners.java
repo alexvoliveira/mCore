@@ -27,6 +27,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.logging.Level;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
 /**
  * @author Maxter
@@ -34,8 +36,9 @@ import java.util.logging.Level;
 public class Listeners implements Listener {
 
   private static final Map<String, Object> PROPERTY_BACKUP = new HashMap<>();
-  private static final Map<String, Long> PROTECTION_LOBBY = new HashMap<>();
-  private static final Map<String, Boolean> TELL_CACHE = new HashMap<>(), PROTECTION_CACHE = new HashMap<>();
+  private static final Map<String, Long> PROTECTION_LOBBY = new ConcurrentHashMap<>();
+  private static final Map<String, Boolean> TELL_CACHE = new ConcurrentHashMap<>(), PROTECTION_CACHE = new ConcurrentHashMap<>();
+  private static final Set<String> PREFERENCE_LOOKUPS = ConcurrentHashMap.newKeySet();
   private static final FieldAccessor<Map> COMMAND_MAP = Accessors.getField(PluginManager.class, "commandMap", Map.class);
 
   @EventHandler
@@ -48,8 +51,12 @@ public class Listeners implements Listener {
 
   @EventHandler
   public void onPostLogin(PostLoginEvent evt) {
-    TELL_CACHE.remove(evt.getPlayer().getName().toLowerCase());
-    PROTECTION_CACHE.remove(evt.getPlayer().getName().toLowerCase());
+    String name = evt.getPlayer().getName();
+    String key = name.toLowerCase(Locale.ROOT);
+    TELL_CACHE.remove(key);
+    PROTECTION_CACHE.remove(key);
+    this.loadPreferenceCache(name, "pm", TELL_CACHE);
+    this.loadPreferenceCache(name, "pl", PROTECTION_CACHE);
   }
 
   @EventHandler
@@ -137,7 +144,13 @@ public class Listeners implements Listener {
           player.sendMessage(TextComponent.fromLegacyText("§aVocê tem certeza? Utilize /lobby novamente para voltar ao lobby."));
         } else if (COMMAND_MAP.get(ProxyServer.getInstance().getPluginManager()).containsKey("tell") && args.length > 1 && command.equals("tell") && !args[1]
           .equalsIgnoreCase(player.getName())) {
-          if (!this.canReceiveTell(args[1].toLowerCase())) {
+          String recipient = args[1].toLowerCase(Locale.ROOT);
+          Boolean canReceive = TELL_CACHE.get(recipient);
+          if (canReceive == null) {
+            evt.setCancelled(true);
+            this.loadPreferenceCache(args[1], "pm", TELL_CACHE);
+            player.sendMessage(TextComponent.fromLegacyText("§7As preferências do destinatário estão sendo verificadas. Tente novamente em instantes."));
+          } else if (!canReceive) {
             evt.setCancelled(true);
             player.sendMessage(TextComponent.fromLegacyText("§cEste usuário desativou as mensagens privadas."));
           }
@@ -215,23 +228,42 @@ public class Listeners implements Listener {
     setter.invoke(profile, replacement);
   }
 
-  private boolean canReceiveTell(String name) {
-    if (TELL_CACHE.containsKey(name)) {
-      return TELL_CACHE.get(name);
+  private boolean hasProtectionLobby(String name) {
+    String key = name.toLowerCase(Locale.ROOT);
+    Boolean cached = PROTECTION_CACHE.get(key);
+    if (cached != null) {
+      return cached;
     }
 
-    boolean canReceiveTell = Database.getInstance().getPreference(name, "pm", true);
-    TELL_CACHE.put(name, canReceiveTell);
-    return canReceiveTell;
+    this.loadPreferenceCache(name, "pl", PROTECTION_CACHE);
+    // Preserve the safe default while the asynchronous preference read completes.
+    return true;
   }
 
-  private boolean hasProtectionLobby(String name) {
-    if (PROTECTION_CACHE.containsKey(name)) {
-      return PROTECTION_CACHE.get(name);
+  private void loadPreferenceCache(String name, String preference, Map<String, Boolean> cache) {
+    String normalizedName = name.toLowerCase(Locale.ROOT);
+    String lookupKey = preference + ":" + normalizedName;
+    if (!PREFERENCE_LOOKUPS.add(lookupKey)) {
+      return;
     }
 
-    boolean hasProtectionLobby = Database.getInstance().getPreference(name, "pl", true);
-    PROTECTION_CACHE.put(name, hasProtectionLobby);
-    return hasProtectionLobby;
+    Database database = Database.getInstance();
+    if (database == null) {
+      PREFERENCE_LOOKUPS.remove(lookupKey);
+      return;
+    }
+
+    database.getPreferenceAsync(name, preference, true).whenComplete((value, failure) -> {
+      try {
+        if (failure != null) {
+          Bungee.getInstance().getLogger().log(Level.WARNING,
+            "Could not load preference '" + preference + "' for " + name + ".", failure);
+          return;
+        }
+        cache.put(normalizedName, value);
+      } finally {
+        PREFERENCE_LOOKUPS.remove(lookupKey);
+      }
+    });
   }
 }
