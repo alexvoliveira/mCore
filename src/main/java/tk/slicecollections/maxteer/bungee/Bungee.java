@@ -34,15 +34,11 @@ public class Bungee extends Plugin {
     saveDefaultConfig();
 
     Database.setupDatabase(
-      config.getString("database.tipo"),
       config.getString("database.mysql.host"),
       config.getString("database.mysql.porta"),
       config.getString("database.mysql.nome"),
       config.getString("database.mysql.usuario"),
-      config.getString("database.mysql.senha"),
-      config.getBoolean("database.mysql.hikari", false),
-      config.getBoolean("database.mysql.mariadb", false),
-      config.getString("database.mongodb.url", "")
+      config.getString("database.mysql.senha")
     );
 
     setupRoles();

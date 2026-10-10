@@ -18,12 +18,6 @@ public abstract class Database {
 
   public void setupBoosters() {}
 
-  public void convertDatabase(Object player) {
-    if (!Manager.BUNGEE) {
-      ((org.bukkit.entity.Player) player).sendMessage("§cRecurso não suportado para seu tipo de Banco de Dados.");
-    }
-  }
-
   public abstract void setBooster(String minigame, String booster, double multiplier, long expires);
 
   public abstract NetworkBooster getBooster(String minigame);
@@ -54,13 +48,8 @@ public abstract class Database {
   public static Logger LOGGER;
   private static Timer cacheTimer;
 
-  /**
-   * Creates the only supported production persistence implementation: MySQL via HikariCP.
-   * Legacy config arguments are accepted temporarily for backward compatibility, but ignored.
-   */
-  @Deprecated
-  public static synchronized void setupDatabase(String type, String mysqlHost, String mysqlPort, String mysqlDbname, String mysqlUsername, String mysqlPassword, boolean hikari, boolean mariadb,
-    String mongoURL) {
+  /** Creates the only supported production persistence implementation: MySQL via HikariCP. */
+  public static synchronized void setupDatabase(String mysqlHost, String mysqlPort, String mysqlDbname, String mysqlUsername, String mysqlPassword) {
     LOGGER = Manager.BUNGEE ? tk.slicecollections.maxteer.bungee.Bungee.getInstance().getLogger() : tk.slicecollections.maxteer.Core.getInstance().getLogger();
     instance = new HikariDatabase(mysqlHost, mysqlPort, mysqlDbname, mysqlUsername, mysqlPassword);
     if (cacheTimer != null) {

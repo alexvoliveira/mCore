@@ -67,8 +67,8 @@ public class Core extends MPlugin {
   @Override
   public void enable() {
     if (!NMS.setupNMS()) {
-      this.setEnabled(false);
       this.getLogger().warning("O plugin apenas funciona na versao 1_8_R3 (Atual: " + MinecraftVersion.getCurrentVersion().getVersion() + ")");
+      Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
 
@@ -100,7 +100,7 @@ public class Core extends MPlugin {
       }
       sb.append("\n ");
       sender.sendMessage(sb.toString());
-      this.setEnabled(false);
+      Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
 
@@ -120,22 +120,18 @@ public class Core extends MPlugin {
 
     if (!PlaceholderAPIPlugin.getInstance().getDescription().getVersion().equals("2.10.5")) {
       Bukkit.getConsoleSender().sendMessage(" \n §6§lAVISO IMPORTANTE\n \n §7Utilize a versão 2.10.5 do PlaceHolderAPI, você está utilizando a v" + PlaceholderAPIPlugin.getInstance().getDescription().getVersion() + "\n ");
-      this.setEnabled(false);
+      Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
 
     PlaceholderAPI.registerExpansion(new MCoreExpansion());
 
     Database.setupDatabase(
-      getConfig().getString("database.tipo"),
       getConfig().getString("database.mysql.host"),
       getConfig().getString("database.mysql.porta"),
       getConfig().getString("database.mysql.nome"),
       getConfig().getString("database.mysql.usuario"),
-      getConfig().getString("database.mysql.senha"),
-      getConfig().getBoolean("database.mysql.hikari",false),
-      getConfig().getBoolean("database.mysql.mariadb", false),
-      getConfig().getString("database.mongodb.url", "")
+      getConfig().getString("database.mysql.senha")
     );
 
     NPCLibrary.setupNPCs(this);

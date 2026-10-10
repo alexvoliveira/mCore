@@ -25,7 +25,7 @@ public class CoreCommand extends Commands {
       }
 
       if (args.length == 0) {
-        player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Converter seu Banco de Dados.\n ");
+        player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Instruções para migração segura do banco.\n ");
         return;
       }
 
@@ -43,8 +43,8 @@ public class CoreCommand extends Commands {
           player.sendMessage("§aO plugin já se encontra em sua última versão.");
         }
       } else if (action.equalsIgnoreCase("converter")) {
-        player.sendMessage("§fBanco de Dados: " + Database.getInstance().getClass().getSimpleName().replace("Database", ""));
-        Database.getInstance().convertDatabase(player);
+        player.sendMessage("§cA conversão online foi removida para evitar migração insegura.");
+        player.sendMessage("§7Use o procedimento offline em docs/DATA-MIGRATION.md e valide o relatório antes de ativar o banco migrado.");
       } else {
         player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Converter seu Banco de Dados.\n ");
       }

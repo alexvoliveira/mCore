@@ -24,7 +24,6 @@ repositories {
 dependencies {
     compileOnly("org.spigotmc:spigot:1.8.8-R0.1-SNAPSHOT")
     compileOnly("net.md-5:bungeecord-api:1.8-SNAPSHOT")
-    compileOnly("net.md-5:bungeecord-proxy:1.8-SNAPSHOT")
     compileOnly("com.comphenix.protocol:ProtocolLib:4.5.0")
     compileOnly("me.clip:placeholderapi:2.10.5")
 
