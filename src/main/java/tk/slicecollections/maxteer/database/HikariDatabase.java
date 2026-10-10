@@ -48,23 +48,14 @@ public class HikariDatabase extends Database {
       return thread;
     });
 
-    this.update(
-      "CREATE TABLE IF NOT EXISTS `mCoreNetworkBooster` (`id` VARCHAR(32), `booster` TEXT, `multiplier` DOUBLE, `expires` LONG, PRIMARY KEY(`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;");
-    this.update(
-      "CREATE TABLE IF NOT EXISTS `mCoreTitles` (`id` VARCHAR(64) NOT NULL, `name` TEXT NOT NULL, `description` TEXT NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE utf8_bin;");
-
-    DataTable.listTables().forEach(table -> {
-      this.update(table.getInfo().create());
-      try (
-          Connection connection = getConnection();
-          PreparedStatement ps = connection.prepareStatement("ALTER TABLE `" + table.getInfo().name() + "` ADD INDEX `namex` (`name` DESC)")
-      ) {
-        ps.executeUpdate();
-      } catch (SQLException ignore) {
-        // Index já existe
-      }
-      table.init(this);
-    });
+    try {
+      DataTable.listTables().forEach(table -> this.update(table.getInfo().create()));
+      SchemaMigrator.migrate(this);
+    } catch (RuntimeException ex) {
+      this.executor.shutdownNow();
+      this.closeConnection();
+      throw ex;
+    }
   }
 
   @Override

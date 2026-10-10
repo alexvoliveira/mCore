@@ -1,6 +1,5 @@
 package tk.slicecollections.maxteer.database.tables;
 
-import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.database.data.DataContainer;
 import tk.slicecollections.maxteer.database.data.DataTable;
 import tk.slicecollections.maxteer.database.data.interfaces.DataTableInfo;
@@ -18,14 +17,7 @@ import java.util.Map;
     update = "UPDATE `mCoreMurder` SET `clkills` = ?, `clbowkills` = ?, `clknifekills` = ?, `clthrownknifekills` = ?, `clwins` = ?, `cldetectivewins` = ?, `clkillerwins` = ?, `clquickestdetective` = ?, `clquickestkiller` = ?, `clchancedetective` = ?, `clchancekiller` = ?, `askills` = ?, `asthrownknifekills` = ?, `aswins` = ?, `coins` = ?, `lastmap` = ?, `cosmetics` = ?, `selected` = ? WHERE LOWER(`name`) = ?")
 public class MurderTable extends DataTable {
 
-  @Override
-  public void init(Database database) {
-    if (database.query("SHOW COLUMNS FROM `mCoreMurder` LIKE ?", "askills") == null) {
-      database.update("ALTER TABLE `mCoreMurder` ADD `askills` LONG DEFAULT 0 AFTER `clchancekiller`, ADD `asthrownknifekills` LONG DEFAULT 0 AFTER `askills`, ADD `aswins` LONG DEFAULT 0 AFTER `asthrownknifekills`");
-    }
-  }
-
-  public Map<String, DataContainer> getDefaultValues() {
+    public Map<String, DataContainer> getDefaultValues() {
     Map<String, DataContainer> defaultValues = new LinkedHashMap<>();
     defaultValues.put("clkills", new DataContainer(0L));
     defaultValues.put("clbowkills", new DataContainer(0L));

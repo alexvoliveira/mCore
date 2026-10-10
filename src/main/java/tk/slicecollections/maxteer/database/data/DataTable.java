@@ -1,6 +1,5 @@
 package tk.slicecollections.maxteer.database.data;
 
-import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.database.data.interfaces.DataTableInfo;
 import tk.slicecollections.maxteer.database.tables.CoreTable;
 import tk.slicecollections.maxteer.database.tables.MurderTable;
@@ -16,8 +15,6 @@ import java.util.Map;
  * @author Maxter
  */
 public abstract class DataTable {
-
-  public abstract void init(Database database);
 
   public abstract Map<String, DataContainer> getDefaultValues();
 

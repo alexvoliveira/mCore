@@ -72,6 +72,9 @@ public class Title {
     TITLES.add(new Title("mmk", "§4Jef the Killer", "&8Pode ser desbloqueado através do\n&8Desafio \"Serial Killer\"&8."));
 
     try (CachedRowSet titles = Database.getInstance().query("SELECT `id`, `name`, `description` FROM `mCoreTitles` ORDER BY `id`")) {
+      if (titles != null) {
+        titles.beforeFirst();
+      }
       while (titles != null && titles.next()) {
         String id = titles.getString("id");
         if (getById(id) == null) {

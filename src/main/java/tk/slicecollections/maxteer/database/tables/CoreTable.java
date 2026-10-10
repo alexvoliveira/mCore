@@ -1,6 +1,5 @@
 package tk.slicecollections.maxteer.database.tables;
 
-import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.database.data.DataContainer;
 import tk.slicecollections.maxteer.database.data.DataTable;
 import tk.slicecollections.maxteer.database.data.interfaces.DataTableInfo;
@@ -21,14 +20,7 @@ import java.util.Set;
     )
 public class CoreTable extends DataTable {
 
-  @Override
-  public void init(Database database) {
-    if (database.query("SHOW COLUMNS FROM `mCoreProfile` LIKE ?", "cash") == null) {
-      database.update("ALTER TABLE `mCoreProfile` ADD `cash` LONG AFTER `name`");
-    }
-  }
-
-  public Map<String, DataContainer> getDefaultValues() {
+    public Map<String, DataContainer> getDefaultValues() {
     Map<String, DataContainer> defaultValues = new LinkedHashMap<>();
     defaultValues.put("cash", new DataContainer(0L));
     defaultValues.put("role", new DataContainer("Membro"));

@@ -1,6 +1,5 @@
 package tk.slicecollections.maxteer.database.tables;
 
-import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.database.data.DataContainer;
 import tk.slicecollections.maxteer.database.data.DataTable;
 import tk.slicecollections.maxteer.database.data.interfaces.DataTableInfo;
@@ -18,14 +17,7 @@ import java.util.Map;
     update = "UPDATE `mCoreTheBridge` SET `1v1kills` = ?, `1v1deaths` = ?, `1v1games` = ?, `1v1points` = ?, `1v1wins` = ?, `2v2kills` = ?, `2v2deaths` = ?, `2v2games` = ?, `2v2points` = ?, `2v2wins` = ?, `coins` = ?, `winstreak` = ?, `laststreak` = ?, `lastmap` = ?, `hotbar` = ?, `cosmetics` = ?, `selected` = ? WHERE LOWER(`name`) = ?")
 public class TheBridgeTable extends DataTable {
 
-  @Override
-  public void init(Database database) {
-    if (database.query("SHOW COLUMNS FROM `mCoreTheBridge` LIKE ?", "hotbar") == null) {
-      database.update("ALTER TABLE `mCoreTheBridge` ADD `hotbar` TEXT AFTER `lastmap`");
-    }
-  }
-
-  public Map<String, DataContainer> getDefaultValues() {
+    public Map<String, DataContainer> getDefaultValues() {
     Map<String, DataContainer> defaultValues = new LinkedHashMap<>();
     defaultValues.put("1v1kills", new DataContainer(0L));
     defaultValues.put("1v1deaths", new DataContainer(0L));
