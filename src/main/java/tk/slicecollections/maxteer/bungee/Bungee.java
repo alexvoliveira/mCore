@@ -57,6 +57,9 @@ public class Bungee extends Plugin {
 
   @Override
   public void onDisable() {
+    if (Database.getInstance() != null) {
+      Database.getInstance().close();
+    }
     this.getLogger().info("O plugin foi desativado.");
   }
 

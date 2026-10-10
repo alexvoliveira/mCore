@@ -128,18 +128,24 @@ public class MongoDBDatabase extends Database {
 
   @Override
   public boolean getPreference(String player, String id, boolean def) {
-    boolean preference = true;
     try {
       Document document = this.executor
-        .submit(() -> this.collection.find(new BasicDBObject("_id", player.toLowerCase())).projection(fields(include("preferences"))).collation(this.collation).first()).get();
+        .submit(() -> this.collection.find(new BasicDBObject("_id", player.toLowerCase(Locale.ROOT)))
+          .projection(fields(include("preferences"))).collation(this.collation).first()).get();
       if (document != null) {
-        preference = ((JSONObject) new JSONParser().parse(document.getString("preferences"))).get(id).equals(0L);
+        Object raw = document.get("preferences");
+        if (raw instanceof String) {
+          JSONObject preferences = (JSONObject) new JSONParser().parse((String) raw);
+          Object value = preferences.get(id);
+          if (value instanceof Number) {
+            return ((Number) value).longValue() == 0L;
+          }
+        }
       }
     } catch (Exception ex) {
-      ex.printStackTrace();
+      LOGGER.log(Level.WARNING, "Could not read preference '" + id + "' for player '" + player + "'.", ex);
     }
-
-    return preference;
+    return def;
   }
 
   @Override

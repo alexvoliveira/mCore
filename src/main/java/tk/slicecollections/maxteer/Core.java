@@ -100,7 +100,7 @@ public class Core extends MPlugin {
       }
       sb.append("\n ");
       sender.sendMessage(sb.toString());
-      System.exit(0);
+      this.setEnabled(false);
       return;
     }
 
@@ -120,7 +120,7 @@ public class Core extends MPlugin {
 
     if (!PlaceholderAPIPlugin.getInstance().getDescription().getVersion().equals("2.10.5")) {
       Bukkit.getConsoleSender().sendMessage(" \n §6§lAVISO IMPORTANTE\n \n §7Utilize a versão 2.10.5 do PlaceHolderAPI, você está utilizando a v" + PlaceholderAPIPlugin.getInstance().getDescription().getVersion() + "\n ");
-      System.exit(0);
+      this.setEnabled(false);
       return;
     }
 
@@ -180,17 +180,7 @@ public class Core extends MPlugin {
       Database.getInstance().close();
     }
 
-    File update = new File("plugins/mCore/update", "mCore.jar");
-    if (update.exists()) {
-      try {
-        this.getFileUtils().deleteFile(new File("plugins/mCore.jar"));
-        this.getFileUtils().copyFile(new FileInputStream(update), new File("plugins/mCore.jar"));
-        this.getFileUtils().deleteFile(update.getParentFile());
-        this.getLogger().info("Update do mCore aplicada.");
-      } catch (Exception ex) {
-        ex.printStackTrace();
-      }
-    }
+    // Atualização automática de JAR desativada até existir verificação de autenticidade do artefato.
     this.getLogger().info("O plugin foi desativado.");
   }
 

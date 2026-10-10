@@ -116,40 +116,57 @@ public class MySQLDatabase extends Database {
 
   @Override
   public boolean getPreference(String player, String id, boolean def) {
-    boolean preference = true;
-    try (CachedRowSet rs = query("SELECT `preferences` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", player.toLowerCase())) {
+    try (CachedRowSet rs = query("SELECT `preferences` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", player.toLowerCase(Locale.ROOT))) {
       if (rs != null) {
-        preference = ((JSONObject) new JSONParser().parse(rs.getString("preferences"))).get(id).equals(0L);
+        JSONObject preferences = (JSONObject) new JSONParser().parse(rs.getString("preferences"));
+        Object value = preferences.get(id);
+        if (value instanceof Number) {
+          return ((Number) value).longValue() == 0L;
+        }
       }
     } catch (Exception ex) {
-      ex.printStackTrace();
+      LOGGER.log(Level.WARNING, "Could not read preference '" + id + "' for player '" + player + "'.", ex);
     }
-
-    return preference;
+    return def;
   }
 
   @Override
   public List<String[]> getLeaderBoard(String table, String... columns) {
     List<String[]> result = new ArrayList<>();
-    StringBuilder add = new StringBuilder(), select = new StringBuilder();
-    for (String column : columns) {
-      add.append("`").append(column).append("` + ");
-      select.append("`").append(column).append("`, ");
+    if (columns == null || columns.length == 0) {
+      return result;
     }
 
-    try (CachedRowSet rs = query("SELECT " + select.toString() + "`name` FROM `" + table + "` ORDER BY " + add.toString() + " 0 DESC LIMIT 10")) {
+    final String safeTable;
+    final List<String> safeColumns;
+    try {
+      safeTable = SqlIdentifier.table(table);
+      safeColumns = SqlIdentifier.columns(safeTable, columns);
+    } catch (IllegalArgumentException ex) {
+      LOGGER.log(Level.WARNING, "Rejected invalid leaderboard table/column identifier.", ex);
+      return result;
+    }
+
+    StringBuilder add = new StringBuilder(), select = new StringBuilder();
+    for (String column : safeColumns) {
+      add.append('`').append(column).append("` + ");
+      select.append('`').append(column).append("`, ");
+    }
+
+    try (CachedRowSet rs = query("SELECT " + select + "`name` FROM `" + safeTable + "` ORDER BY " + add + " 0 DESC LIMIT 10")) {
       if (rs != null) {
         rs.beforeFirst();
         while (rs.next()) {
           long count = 0;
-          for (String column : columns) {
+          for (String column : safeColumns) {
             count += rs.getLong(column);
           }
           result.add(new String[] {Role.getColored(rs.getString("name"), true), StringUtils.formatNumber(count)});
         }
       }
-    } catch (SQLException ignore) {}
-
+    } catch (SQLException ex) {
+      LOGGER.log(Level.WARNING, "Could not load leaderboard for table '" + safeTable + "'.", ex);
+    }
     return result;
   }
 
@@ -245,7 +262,10 @@ public class MySQLDatabase extends Database {
       Class.forName(this.mariadb ? "org.mariadb.jdbc.Driver" : "com.mysql.jdbc.Driver");
       this.connection = DriverManager.getConnection((this.mariadb ?
         "jdbc:mariadb://" :
-        "jdbc:mysql://") + host + ":" + port + "/" + dbname + "?verifyServerCertificate=false&useSSL=false&useUnicode=yes&characterEncoding=UTF-8", username, password);
+        "jdbc:mysql://") + host + ":" + port + "/" + dbname +
+        (this.mariadb
+          ? "?useSsl=true&trustServerCertificate=false&characterEncoding=UTF-8"
+          : "?sslMode=VERIFY_IDENTITY&useUnicode=yes&characterEncoding=UTF-8"), username, password);
       if (reconnected) {
         LOGGER.info("Reconectado ao MySQL!");
         return;
@@ -254,7 +274,7 @@ public class MySQLDatabase extends Database {
       LOGGER.info("Conectado ao MySQL!");
     } catch (Exception ex) {
       LOGGER.log(Level.SEVERE, "Nao foi possivel se conectar ao MySQL: ", ex);
-      System.exit(0);
+      throw new IllegalStateException("Database connection failed; mCore cannot start safely.", ex);
     }
   }
 

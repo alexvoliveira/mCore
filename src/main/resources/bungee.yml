@@ -1,5 +1,5 @@
 author: Maxteer
-name: ${project.artifactId}
-version: ${project.version}
+name: ${artifactId}
+version: ${version}
 
-main: ${main-bungee}
+main: ${mainBungee}
