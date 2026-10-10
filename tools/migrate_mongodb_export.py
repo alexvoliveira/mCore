@@ -109,7 +109,7 @@ def mysql_value(value: Any) -> Any:
     if isinstance(value, bool):
         return int(value)
     if isinstance(value, (dict, list)):
-        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str)
     return value
 
 def millis_now() -> int:
@@ -152,7 +152,10 @@ def profile_row(table: str, document: Mapping[str, Any], columns: List[str]) -> 
         else:
             raise ValueError(f"Unknown column {column!r} in schema for {table}; inspect the target schema before importing")
 
-    extra = set(source) - set(columns) - DERIVED_FIELDS
+    ignored = DERIVED_FIELDS | {"_id"}
+    if table == "mCoreProfile":
+        ignored = ignored | set(PROFILE_TABLES[1:])
+    extra = set(source) - set(columns) - ignored
     # A source row may carry fields that do not exist in this version's SQL table.
     # Fail instead of silently discarding such data.
     if extra:
@@ -193,18 +196,18 @@ def insert_batch(cursor: Any, connection: Any, table: str, rows: List[Dict[str, 
         return 0
     # Table and column names come only from the explicit allowlist and live schema.
     columns = list(rows[0].keys())
-    quoted_columns = ", ".join(f"\`{col.replace('\`', '\`\`')}\`" for col in columns)
+    quoted_columns = ", ".join(f"`{col.replace('`', '``')}`" for col in columns)
     placeholders = ", ".join(["%s"] * len(columns))
     if overwrite:
         updates = [col for col in columns if col not in {"name", "id"}]
         on_duplicate = ""
         if updates:
             on_duplicate = " ON DUPLICATE KEY UPDATE " + ", ".join(
-                f"\`{col.replace('\`', '\`\`')}\` = VALUES(\`{col.replace('\`', '\`\`')}\`)" for col in updates
+                f"`{col.replace('`', '``')}` = VALUES(`{col.replace('`', '``')}`)" for col in updates
             )
-        sql = f"INSERT INTO \`{table}\` ({quoted_columns}) VALUES ({placeholders}){on_duplicate}"
+        sql = f"INSERT INTO `{table}` ({quoted_columns}) VALUES ({placeholders}){on_duplicate}"
     else:
-        sql = f"INSERT IGNORE INTO \`{table}\` ({quoted_columns}) VALUES ({placeholders})"
+        sql = f"INSERT IGNORE INTO `{table}` ({quoted_columns}) VALUES ({placeholders})"
     values = [tuple(row.get(col) for col in columns) for row in rows]
     cursor.executemany(sql, values)
     affected = max(cursor.rowcount, 0)
@@ -278,7 +281,7 @@ def main() -> int:
         schemas = schema_columns(cursor)
         before: Dict[str, int] = {}
         for table in TABLES:
-            cursor.execute(f"SELECT COUNT(*) FROM \`{table}\`")
+            cursor.execute(f"SELECT COUNT(*) FROM `{table}`")
             before[table] = int(cursor.fetchone()[0])
 
         buffers: Dict[str, List[Dict[str, Any]]] = {table: [] for table in TABLES}
@@ -322,7 +325,7 @@ def main() -> int:
 
         after: Dict[str, int] = {}
         for table in TABLES:
-            cursor.execute(f"SELECT COUNT(*) FROM \`{table}\`")
+            cursor.execute(f"SELECT COUNT(*) FROM `{table}`")
             after[table] = int(cursor.fetchone()[0])
         connection.commit()
 
