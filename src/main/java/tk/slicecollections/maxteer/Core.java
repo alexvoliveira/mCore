@@ -156,7 +156,7 @@ public class Core extends MPlugin {
     getServer().getMessenger().registerOutgoingPluginChannel(this, "mCore");
     getServer().getMessenger().registerIncomingPluginChannel(this, "mCore", new PluginMessageListener());
 
-    Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> new SliceUpdater(this, 4).run());
+    Bukkit.getScheduler().runTaskAsynchronously(this, () -> new SliceUpdater(this, 4).run());
 
     validInit = true;
     this.getLogger().info("O plugin foi ativado.");
