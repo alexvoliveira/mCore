@@ -307,7 +307,6 @@ public class HikariDatabase extends Database {
     return tableMap;
   }
 
-  @Override
   private void populateTableRow(Map<String, DataContainer> rows, CachedRowSet result) throws SQLException {
     rows.clear();
     for (int column = 2; column <= result.getMetaData().getColumnCount(); column++) {
@@ -384,21 +383,6 @@ public class HikariDatabase extends Database {
     }
   }
 
-
-    if (name == null || tableMap == null) {
-      return;
-    }
-    List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
-    if (snapshot.isEmpty()) {
-      return;
-    }
-    try {
-      this.persistSnapshot(name, snapshot);
-      this.acknowledgeSnapshot(snapshot);
-    } catch (Exception ex) {
-      LOGGER.log(Level.WARNING, "Could not synchronously save profile " + name + "; dirty values were retained for retry.", ex);
-    }
-  }
 
   private List<TableSnapshot> captureSnapshot(Map<String, Map<String, DataContainer>> tableMap) {
     List<TableSnapshot> snapshot = new ArrayList<>();
