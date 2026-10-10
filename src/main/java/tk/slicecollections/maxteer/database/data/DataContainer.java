@@ -21,21 +21,21 @@ public class DataContainer {
     this.value = value;
   }
 
-  public void gc() {
+  public synchronized void gc() {
     this.value = null;
     this.containerMap.values().forEach(AbstractContainer::gc);
     this.containerMap.clear();
     this.containerMap = null;
   }
 
-  public void set(Object value) {
+  public synchronized void set(Object value) {
     if (this.value == null || !this.value.equals(value)) {
       this.setUpdated(true);
     }
     this.value = value;
   }
 
-  public void setUpdated(boolean updated) {
+  public synchronized void setUpdated(boolean updated) {
     this.updated = updated;
   }
 
@@ -63,7 +63,7 @@ public class DataContainer {
     this.set(getAsDouble() - amount);
   }
 
-  public Object get() {
+  public synchronized Object get() {
     return this.value;
   }
 
@@ -79,7 +79,7 @@ public class DataContainer {
     return Double.parseDouble(this.getAsString());
   }
 
-  public String getAsString() {
+  public synchronized String getAsString() {
     return this.value.toString();
   }
 
@@ -103,14 +103,14 @@ public class DataContainer {
     }
   }
 
-  public boolean isUpdated() {
+  public synchronized boolean isUpdated() {
     return this.updated;
   }
 
   private Map<Class<? extends AbstractContainer>, AbstractContainer> containerMap = new HashMap<>();
 
   @SuppressWarnings("unchecked")
-  public <T extends AbstractContainer> T getContainer(Class<T> containerClass) {
+  public synchronized <T extends AbstractContainer> T getContainer(Class<T> containerClass) {
     if (!this.containerMap.containsKey(containerClass)) {
       this.containerMap.put(containerClass, Accessors.getConstructor(containerClass, DataContainer.class).newInstance(this));
     }

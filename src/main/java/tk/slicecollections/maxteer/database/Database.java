@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Timer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -34,6 +35,8 @@ public abstract class Database {
 
   public abstract void save(String name, Map<String, Map<String, DataContainer>> tableMap);
 
+  public abstract CompletableFuture<Void> saveAsync(String name, Map<String, Map<String, DataContainer>> tableMap);
+
   public abstract void saveSync(String name, Map<String, Map<String, DataContainer>> tableMap);
 
   public abstract String exists(String name);
@@ -42,7 +45,7 @@ public abstract class Database {
 
   public abstract void update(String sql, Object... parameters);
 
-  public abstract void execute(String sql, Object... parameters);
+  public abstract CompletableFuture<Void> execute(String sql, Object... parameters);
 
   private static Database instance;
   public static Logger LOGGER;

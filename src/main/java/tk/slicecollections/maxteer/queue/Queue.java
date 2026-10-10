@@ -12,84 +12,114 @@ import tk.slicecollections.maxteer.player.Profile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 
 public class Queue {
 
   private BukkitTask task;
-  private List<QueuePlayer> players;
-
-  public Queue() {
-    this.players = new ArrayList<>();
-  }
+  private final List<QueuePlayer> players = new ArrayList<>();
 
   public void queue(Player player, Profile profile, String server) {
+    if (!Bukkit.isPrimaryThread()) {
+      Bukkit.getScheduler().runTask(Core.getInstance(), () -> queue(player, profile, server));
+      return;
+    }
+
     this.players.add(new QueuePlayer(player, profile, server));
     if (this.task == null) {
       this.task = new BukkitRunnable() {
-        private boolean send, saving;
+        private boolean saving;
+        private boolean readyToConnect;
         private QueuePlayer current;
 
         @Override
         public void run() {
-          int id = 1;
-          for (QueuePlayer qp : new ArrayList<>(players)) {
-            if (!qp.player.isOnline()) {
-              players.remove(qp);
-              qp.destroy();
+          int position = 1;
+          for (QueuePlayer queued : new ArrayList<>(players)) {
+            if (queued.player == null || !queued.player.isOnline()) {
+              players.remove(queued);
+              queued.destroy();
               continue;
             }
 
-            NMS.sendActionBar(qp.player, "§aVocê está na Fila para conectar-se a §8" + qp.server + " §7(Posição #" + id + ")");
-            id++;
+            NMS.sendActionBar(queued.player, "§aVocê está na Fila para conectar-se a §8" + queued.server + " §7(Posição #" + position + ")");
+            position++;
           }
 
-          if (this.current != null) {
-            if (this.current.player == null || !this.current.player.isOnline()) {
-              players.remove(this.current);
-              this.current.destroy();
-              this.current = null;
+          if (this.current == null) {
+            if (players.isEmpty()) {
+              Queue.this.task.cancel();
+              Queue.this.task = null;
               return;
             }
-
-            if (this.send) {
-              final Player player = this.current.player;
-              final String server = this.current.server;
-              Bukkit.getScheduler().runTask(Core.getInstance(), () -> {
-                if (player.isOnline()) {
-                  player.closeInventory();
-                  NMS.sendActionBar(player, "");
-                  player.sendMessage("§aConectando...");
-                  ByteArrayDataOutput out = ByteStreams.newDataOutput();
-                  out.writeUTF("Connect");
-                  out.writeUTF(server);
-                  player.sendPluginMessage(Core.getInstance(), "BungeeCord", out.toByteArray());
-                }
-              });
-              players.remove(this.current);
-              this.current.destroy();
-              this.current = null;
-              return;
-            }
-
-            if (!this.saving) {
-              this.saving = true;
-              this.current.profile.saveSync();
-              this.send = true;
-            }
-          }
-
-          if (this.current == null && !players.isEmpty()) {
             this.current = players.get(0);
-            this.send = false;
             this.saving = false;
+            this.readyToConnect = false;
+            return;
+          }
+
+          if (this.current.player == null || !this.current.player.isOnline()) {
+            players.remove(this.current);
+            this.current.destroy();
+            this.current = null;
+            this.saving = false;
+            this.readyToConnect = false;
+            return;
+          }
+
+          if (this.readyToConnect) {
+            Player player = this.current.player;
+            String server = this.current.server;
+            player.closeInventory();
+            NMS.sendActionBar(player, "");
+            player.sendMessage("§aConectando...");
+            ByteArrayDataOutput out = ByteStreams.newDataOutput();
+            out.writeUTF("Connect");
+            out.writeUTF(server);
+            player.sendPluginMessage(Core.getInstance(), "BungeeCord", out.toByteArray());
+            players.remove(this.current);
+            this.current.destroy();
+            this.current = null;
+            this.saving = false;
+            this.readyToConnect = false;
+            return;
+          }
+
+          if (!this.saving) {
+            this.saving = true;
+            final QueuePlayer target = this.current;
+            target.profile.saveAsync().whenComplete((ignored, failure) -> {
+              try {
+                Bukkit.getScheduler().runTask(Core.getInstance(), () -> {
+                  if (this.current != target) {
+                    return;
+                  }
+                  this.saving = false;
+                  if (failure == null) {
+                    this.readyToConnect = true;
+                  } else {
+                    Core.getInstance().getLogger().log(Level.WARNING,
+                      "O salvamento do perfil falhou; a transferência será tentada novamente.", failure);
+                    if (target.player != null && target.player.isOnline()) {
+                      target.player.sendMessage("§cNão foi possível salvar seus dados. Tentaremos novamente antes de conectar.");
+                    }
+                  }
+                });
+              } catch (RuntimeException ex) {
+                Core core = Core.getInstance();
+                if (core != null) {
+                  core.getLogger().log(Level.FINE, "Queue callback arrived during plugin shutdown.", ex);
+                }
+              }
+            });
           }
         }
-      }.runTaskTimerAsynchronously(Core.getInstance(), 0, 20);
+      }.runTaskTimer(Core.getInstance(), 0, 20);
     }
   }
 
   public QueuePlayer getQueuePlayer(Player player) {
-    return this.players.stream().filter(qp -> qp.player.equals(player)).findFirst().orElse(null);
+    return this.players.stream().filter(qp -> qp.player != null && qp.player.equals(player)).findFirst().orElse(null);
   }
 
   public static final Queue VIP = new Queue();

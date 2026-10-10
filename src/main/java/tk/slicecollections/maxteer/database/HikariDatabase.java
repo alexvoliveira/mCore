@@ -17,8 +17,12 @@ import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -33,7 +37,7 @@ public class HikariDatabase extends Database {
   private String username;
   private String password;
   private HikariDataSource dataSource;
-  private ExecutorService executor;
+  private ThreadPoolExecutor executor;
 
   public HikariDatabase(String host, String port, String dbname, String username, String password) {
     this.host = host;
@@ -42,11 +46,12 @@ public class HikariDatabase extends Database {
     this.username = username;
     this.password = password;
     this.openConnection();
-    this.executor = Executors.newSingleThreadExecutor(runnable -> {
-      Thread thread = new Thread(runnable, "mCore-db-writer");
-      thread.setDaemon(true);
-      return thread;
-    });
+    this.executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+      new ArrayBlockingQueue<>(1024), runnable -> {
+        Thread thread = new Thread(runnable, "mCore-db-writer");
+        thread.setDaemon(true);
+        return thread;
+      }, new ThreadPoolExecutor.AbortPolicy());
 
     try {
       DataTable.listTables().forEach(table -> this.update(table.getInfo().create()));
@@ -163,17 +168,24 @@ public class HikariDatabase extends Database {
   public void close() {
     this.executor.shutdown();
     try {
-      if (!this.executor.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS)) {
-        java.util.List<Runnable> pending = this.executor.shutdownNow();
-        if (!pending.isEmpty()) {
-          LOGGER.warning("Discarded " + pending.size() + " queued database operation(s) during shutdown.");
+      if (!this.executor.awaitTermination(30, TimeUnit.SECONDS)) {
+        List<Runnable> pending = this.executor.shutdownNow();
+        for (Runnable runnable : pending) {
+          if (runnable instanceof WriteTask) {
+            ((WriteTask) runnable).fail(new IllegalStateException("Database shut down before the queued operation could run."));
+          }
         }
-        if (!this.executor.awaitTermination(2, java.util.concurrent.TimeUnit.SECONDS)) {
+        if (!this.executor.awaitTermination(2, TimeUnit.SECONDS)) {
           LOGGER.warning("Database writer did not stop within the shutdown deadline.");
         }
       }
     } catch (InterruptedException ex) {
-      this.executor.shutdownNow();
+      List<Runnable> pending = this.executor.shutdownNow();
+      for (Runnable runnable : pending) {
+        if (runnable instanceof WriteTask) {
+          ((WriteTask) runnable).fail(ex);
+        }
+      }
       Thread.currentThread().interrupt();
       LOGGER.log(Level.WARNING, "Interrupted while stopping the database writer.", ex);
     } finally {
@@ -214,40 +226,185 @@ public class HikariDatabase extends Database {
 
   @Override
   public void save(String name, Map<String, Map<String, DataContainer>> tableMap) {
-    this.save0(name, tableMap, true);
+    this.saveAsync(name, tableMap);
+  }
+
+  @Override
+  public CompletableFuture<Void> saveAsync(String name, Map<String, Map<String, DataContainer>> tableMap) {
+    if (name == null || tableMap == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
+    if (snapshot.isEmpty()) {
+      return CompletableFuture.completedFuture(null);
+    }
+    return this.submitWrite("save profile " + name, () -> {
+      this.persistSnapshot(name, snapshot);
+      this.acknowledgeSnapshot(snapshot);
+    });
   }
 
   @Override
   public void saveSync(String name, Map<String, Map<String, DataContainer>> tableMap) {
-    this.save0(name, tableMap, false);
+    if (name == null || tableMap == null) {
+      return;
+    }
+    List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
+    if (snapshot.isEmpty()) {
+      return;
+    }
+    try {
+      this.persistSnapshot(name, snapshot);
+      this.acknowledgeSnapshot(snapshot);
+    } catch (Exception ex) {
+      LOGGER.log(Level.WARNING, "Could not synchronously save profile " + name + "; dirty values were retained for retry.", ex);
+    }
   }
 
-  private void save0(String name, Map<String, Map<String, DataContainer>> tableMap, boolean async) {
+  private List<TableSnapshot> captureSnapshot(Map<String, Map<String, DataContainer>> tableMap) {
+    List<TableSnapshot> snapshot = new ArrayList<>();
     for (DataTable table : DataTable.listTables()) {
       Map<String, DataContainer> rows = tableMap.get(table.getInfo().name());
-      if (rows.values().stream().noneMatch(DataContainer::isUpdated)) {
+      if (rows == null || rows.isEmpty()) {
         continue;
       }
-
-      List<Object> values = rows.values().stream().filter(DataContainer::isUpdated).map(DataContainer::get).collect(Collectors.toList());
-      StringBuilder query = new StringBuilder("UPDATE `" + table.getInfo().name() + "` SET ");
-      for (Map.Entry<String, DataContainer> collumn : rows.entrySet()) {
-        if (collumn.getValue().isUpdated()) {
-          collumn.getValue().setUpdated(false);
-          query.append("`").append(collumn.getKey()).append("` = ?, ");
+      Map<String, PendingValue> changed = new LinkedHashMap<>();
+      for (Map.Entry<String, DataContainer> entry : rows.entrySet()) {
+        DataContainer container = entry.getValue();
+        synchronized (container) {
+          if (container.isUpdated()) {
+            changed.put(entry.getKey(), new PendingValue(container, container.get()));
+          }
         }
       }
-      query.deleteCharAt(query.length() - 1);
-      query.deleteCharAt(query.length() - 1);
-      query.append(" WHERE LOWER(`name`) = ?");
-      values.add(name.toLowerCase(Locale.ROOT));
-      if (async) {
-        this.execute(query.toString(), values.toArray());
-      } else {
-        this.update(query.toString(), values.toArray());
+      if (!changed.isEmpty()) {
+        snapshot.add(new TableSnapshot(table.getInfo().name(), changed));
       }
-      values.clear();
     }
+    return snapshot;
+  }
+
+  private void persistSnapshot(String name, List<TableSnapshot> snapshot) throws SQLException {
+    try (Connection connection = getConnection()) {
+      boolean originalAutoCommit = connection.getAutoCommit();
+      connection.setAutoCommit(false);
+      try {
+        for (TableSnapshot table : snapshot) {
+          StringBuilder sql = new StringBuilder("UPDATE ").append(quoteIdentifier(table.name)).append(" SET ");
+          for (String column : table.values.keySet()) {
+            sql.append(quoteIdentifier(column)).append(" = ?, ");
+          }
+          sql.setLength(sql.length() - 2);
+          sql.append(" WHERE LOWER(`name`) = ?");
+          try (PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+            int index = 1;
+            for (PendingValue field : table.values.values()) {
+              statement.setObject(index++, field.value);
+            }
+            statement.setString(index, name.toLowerCase(Locale.ROOT));
+            statement.executeUpdate();
+          }
+        }
+        connection.commit();
+      } catch (SQLException ex) {
+        try {
+          connection.rollback();
+        } catch (SQLException rollbackError) {
+          ex.addSuppressed(rollbackError);
+        }
+        throw ex;
+      } finally {
+        try {
+          connection.setAutoCommit(originalAutoCommit);
+        } catch (SQLException resetError) {
+          LOGGER.log(Level.WARNING, "Could not reset auto-commit on a pooled connection.", resetError);
+        }
+      }
+    }
+  }
+
+  private void acknowledgeSnapshot(List<TableSnapshot> snapshot) {
+    for (TableSnapshot table : snapshot) {
+      for (PendingValue field : table.values.values()) {
+        synchronized (field.container) {
+          if (Objects.equals(field.container.get(), field.value)) {
+            field.container.setUpdated(false);
+          }
+        }
+      }
+    }
+  }
+
+  private static String quoteIdentifier(String identifier) {
+    if (identifier == null || !identifier.matches("[A-Za-z0-9_]+")) {
+      throw new IllegalArgumentException("Invalid internal SQL identifier: " + identifier);
+    }
+    return "`" + identifier + "`";
+  }
+
+  private static final class PendingValue {
+    private final DataContainer container;
+    private final Object value;
+
+    private PendingValue(DataContainer container, Object value) {
+      this.container = container;
+      this.value = value;
+    }
+  }
+
+  private static final class TableSnapshot {
+    private final String name;
+    private final Map<String, PendingValue> values;
+
+    private TableSnapshot(String name, Map<String, PendingValue> values) {
+      this.name = name;
+      this.values = values;
+    }
+  }
+
+  @FunctionalInterface
+  private interface WriteOperation {
+    void run() throws Exception;
+  }
+
+  private final class WriteTask implements Runnable {
+    private final String description;
+    private final WriteOperation operation;
+    private final CompletableFuture<Void> future;
+
+    private WriteTask(String description, WriteOperation operation, CompletableFuture<Void> future) {
+      this.description = description;
+      this.operation = operation;
+      this.future = future;
+    }
+
+    @Override
+    public void run() {
+      try {
+        operation.run();
+        future.complete(null);
+      } catch (Exception ex) {
+        future.completeExceptionally(ex);
+        LOGGER.log(Level.WARNING, "Failed to " + description + ".", ex);
+      }
+    }
+
+    private void fail(Throwable cause) {
+      if (future.completeExceptionally(cause)) {
+        LOGGER.log(Level.WARNING, "Could not execute " + description + ".", cause);
+      }
+    }
+  }
+
+  private CompletableFuture<Void> submitWrite(String description, WriteOperation operation) {
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    WriteTask task = new WriteTask(description, operation, future);
+    try {
+      this.executor.execute(task);
+    } catch (RejectedExecutionException ex) {
+      task.fail(ex);
+    }
+    return future;
   }
 
   @Override
@@ -291,38 +448,26 @@ public class HikariDatabase extends Database {
 
   @Override
   public void update(String sql, Object... vars) {
-    Connection connection = null;
-    PreparedStatement ps = null;
     try {
-      connection = getConnection();
-      ps = connection.prepareStatement(sql);
-      for (int i = 0; i < vars.length; i++) {
-        ps.setObject(i + 1, vars[i]);
-      }
-      ps.executeUpdate();
+      updateOrThrow(sql, vars);
     } catch (SQLException ex) {
-      LOGGER.log(Level.WARNING, "Nao foi possivel executar um SQL: ", ex);
-    } finally {
-      try {
-        if (connection != null && !connection.isClosed())
-          connection.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
+      LOGGER.log(Level.WARNING, "Could not execute SQL update.", ex);
+    }
+  }
+
+  private void updateOrThrow(String sql, Object... vars) throws SQLException {
+    try (Connection connection = getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+      for (int i = 0; i < vars.length; i++) {
+        statement.setObject(i + 1, vars[i]);
       }
-      try {
-        if (ps != null && !ps.isClosed())
-          ps.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      }
+      statement.executeUpdate();
     }
   }
 
   @Override
-  public void execute(String sql, Object... vars) {
-    executor.execute(() -> {
-      update(sql, vars);
-    });
+  public CompletableFuture<Void> execute(String sql, Object... vars) {
+    Object[] parameters = Arrays.copyOf(vars, vars.length);
+    return submitWrite("SQL update", () -> updateOrThrow(sql, parameters));
   }
 
   public int updateWithInsertId(String sql, Object... vars) {

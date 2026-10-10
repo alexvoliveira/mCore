@@ -26,6 +26,7 @@ import tk.slicecollections.maxteer.utils.StringUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -175,6 +176,19 @@ public class Profile {
     }
 
     Database.getInstance().save(this.name, this.tableMap);
+  }
+
+  public CompletableFuture<Void> saveAsync() {
+    if (this.name == null || this.tableMap == null) {
+      return CompletableFuture.completedFuture(null);
+    }
+    Database database = Database.getInstance();
+    if (database == null) {
+      CompletableFuture<Void> failed = new CompletableFuture<>();
+      failed.completeExceptionally(new IllegalStateException("The mCore database is not initialized."));
+      return failed;
+    }
+    return database.saveAsync(this.name, this.tableMap);
   }
 
   public void saveSync() {
