@@ -5,7 +5,7 @@
 - JDK compatível com o alvo Java 8; use uma toolchain/ambiente de compilação validado para o legado.
 - Gradle 8.14.3 disponível para gerar o Wrapper.
 - Artefatos compatíveis com Spigot/CraftBukkit 1.8.8 (incluindo NMS `v1_8_R3`) e a API BungeeCord 1.8 acessíveis por HTTPS ou instalados em `mavenLocal()`.
-- ProtocolLib 4.5.0 e PlaceholderAPI 2.10.5 compatíveis com o servidor legado.
+- ProtocolLib 4.5.0 e PlaceholderAPI 2.10.5 compatíveis com o servidor legado. O build consulta as URLs atuais de ProtocolLib e também repositórios espelho HTTPS para os artefatos antigos que não são mais encontrados em todos os repositórios originais.
 
 O código usa classes NMS da versão legada; gere o artefato compatível utilizando os BuildTools oficiais do Spigot para `1.8.8`. Confirme que a API BungeeCord publicada coincide com as assinaturas utilizadas pelo código antes de aceitar o build.
 

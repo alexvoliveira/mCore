@@ -17,7 +17,10 @@ repositories {
     mavenCentral()
     maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
     maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots/") }
-    maven { url = uri("https://repo.dmulloy2.net/nexus/repository/public/") }
+    // Historical repositories still host the versions required by the 1.8.8 runtime.
+    maven { url = uri("https://repo.aikar.co/nexus/content/groups/aikar/") }
+    maven { url = uri("https://repo.dmulloy2.net/repository/public/") }
+    maven { url = uri("https://repo.glaremasters.me/repository/public/") }
     maven { url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/") }
 }
 
