@@ -19,10 +19,14 @@ import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -38,6 +42,10 @@ public class HikariDatabase extends Database {
   private String password;
   private HikariDataSource dataSource;
   private ThreadPoolExecutor executor;
+  private final Object saveSubmissionLock = new Object();
+  private final AtomicLong saveSequence = new AtomicLong();
+  private final ConcurrentMap<String, PendingProfileSave> failedProfileSaves = new ConcurrentHashMap<>();
+  private final AtomicBoolean retryScheduled = new AtomicBoolean();
 
   public HikariDatabase(String host, String port, String dbname, String username, String password) {
     this.host = host;
@@ -199,9 +207,7 @@ public class HikariDatabase extends Database {
             ((WriteTask) runnable).fail(new IllegalStateException("Database shut down before the queued operation could run."));
           }
         }
-        if (!this.executor.awaitTermination(2, TimeUnit.SECONDS)) {
-          LOGGER.warning("Database writer did not stop within the shutdown deadline.");
-        }
+        this.executor.awaitTermination(2, TimeUnit.SECONDS);
       }
     } catch (InterruptedException ex) {
       List<Runnable> pending = this.executor.shutdownNow();
@@ -213,6 +219,10 @@ public class HikariDatabase extends Database {
       Thread.currentThread().interrupt();
       LOGGER.log(Level.WARNING, "Interrupted while stopping the database writer.", ex);
     } finally {
+      this.retryFailedProfileSavesOnShutdown();
+      if (!this.failedProfileSaves.isEmpty()) {
+        LOGGER.severe("Some profile save snapshots remain unpersisted after shutdown retry. Inspect the database and logs.");
+      }
       this.closeConnection();
       Database.stopBackgroundTasks();
     }
@@ -291,14 +301,22 @@ public class HikariDatabase extends Database {
     if (name == null || tableMap == null) {
       return CompletableFuture.completedFuture(null);
     }
-    List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
-    if (snapshot.isEmpty()) {
-      return CompletableFuture.completedFuture(null);
+
+    synchronized (this.saveSubmissionLock) {
+      List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
+      if (snapshot.isEmpty()) {
+        return CompletableFuture.completedFuture(null);
+      }
+      PendingProfileSave pending = new PendingProfileSave(name, name.toLowerCase(Locale.ROOT),
+        this.saveSequence.incrementAndGet(), snapshot);
+      CompletableFuture<Void> future = this.submitWrite("save profile " + name, () -> this.persistProfileSave(pending));
+      future.whenComplete((ignored, failure) -> {
+        if (failure != null) {
+          this.retainFailedSave(pending);
+        }
+      });
+      return future;
     }
-    return this.submitWrite("save profile " + name, () -> {
-      this.persistSnapshot(name, snapshot);
-      this.acknowledgeSnapshot(snapshot);
-    });
   }
 
   @Override
@@ -311,17 +329,35 @@ public class HikariDatabase extends Database {
     if (name == null || tableMap == null) {
       return true;
     }
-    List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
-    if (snapshot.isEmpty()) {
-      return true;
-    }
-    try {
-      this.persistSnapshot(name, snapshot);
-      this.acknowledgeSnapshot(snapshot);
-      return true;
-    } catch (Exception ex) {
-      LOGGER.log(Level.WARNING, "Could not synchronously save profile " + name + "; dirty values were retained for retry.", ex);
-      return false;
+
+    synchronized (this.saveSubmissionLock) {
+      List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
+      if (snapshot.isEmpty()) {
+        return true;
+      }
+
+      PendingProfileSave pending = new PendingProfileSave(name, name.toLowerCase(Locale.ROOT),
+        this.saveSequence.incrementAndGet(), snapshot);
+      CompletableFuture<Void> future = this.submitWrite("synchronous save profile " + name,
+        () -> this.persistProfileSave(pending));
+      future.whenComplete((ignored, failure) -> {
+        if (failure != null) {
+          this.retainFailedSave(pending);
+        }
+      });
+      try {
+        future.get();
+        return true;
+      } catch (InterruptedException ex) {
+        this.retainFailedSave(pending);
+        Thread.currentThread().interrupt();
+        LOGGER.log(Level.WARNING, "Interrupted while synchronously saving profile '" + name + "'.", ex);
+        return false;
+      } catch (java.util.concurrent.ExecutionException ex) {
+        this.retainFailedSave(pending);
+        LOGGER.log(Level.WARNING, "Could not synchronously save profile '" + name + "'.", ex.getCause());
+        return false;
+      }
     }
   }
 
@@ -412,6 +448,77 @@ public class HikariDatabase extends Database {
           }
         }
       }
+    }
+  }
+
+  private void persistProfileSave(PendingProfileSave pending) throws SQLException {
+    try {
+      this.persistSnapshot(pending.name, pending.snapshot);
+      this.acknowledgeSnapshot(pending.snapshot);
+      this.failedProfileSaves.computeIfPresent(pending.key,
+        (key, failed) -> failed.sequence <= pending.sequence ? null : failed);
+    } catch (SQLException ex) {
+      this.retainFailedSave(pending);
+      throw ex;
+    }
+  }
+
+  private void retainFailedSave(PendingProfileSave pending) {
+    this.failedProfileSaves.compute(pending.key,
+      (key, existing) -> existing == null || existing.sequence <= pending.sequence ? pending : existing);
+  }
+
+  /** Called by the role-cache timer; retry work is serialized behind profile writes. */
+  public void retryPendingSavesAsync() {
+    if (this.failedProfileSaves.isEmpty() || !this.retryScheduled.compareAndSet(false, true)) {
+      return;
+    }
+
+    CompletableFuture<Void> retry = this.submitWrite("retry retained profile saves", () -> {
+      for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
+        if (this.failedProfileSaves.get(pending.key) != pending) {
+          continue;
+        }
+        try {
+          this.persistSnapshot(pending.name, pending.snapshot);
+          this.acknowledgeSnapshot(pending.snapshot);
+          this.failedProfileSaves.remove(pending.key, pending);
+        } catch (SQLException ex) {
+          LOGGER.log(Level.FINE, "Profile save remains pending for " + pending.name + ".", ex);
+        }
+      }
+    });
+    retry.whenComplete((ignored, failure) -> {
+      this.retryScheduled.set(false);
+      if (failure != null) {
+        LOGGER.log(Level.WARNING, "Could not schedule retry of retained profile saves.", failure);
+      }
+    });
+  }
+
+  private void retryFailedProfileSavesOnShutdown() {
+    for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
+      try {
+        this.persistSnapshot(pending.name, pending.snapshot);
+        this.acknowledgeSnapshot(pending.snapshot);
+        this.failedProfileSaves.remove(pending.key, pending);
+      } catch (SQLException ex) {
+        LOGGER.log(Level.SEVERE, "Profile data is still not persisted for " + pending.name + ".", ex);
+      }
+    }
+  }
+
+  private static final class PendingProfileSave {
+    private final String name;
+    private final String key;
+    private final long sequence;
+    private final List<TableSnapshot> snapshot;
+
+    private PendingProfileSave(String name, String key, long sequence, List<TableSnapshot> snapshot) {
+      this.name = name;
+      this.key = key;
+      this.sequence = sequence;
+      this.snapshot = snapshot;
     }
   }
 
