@@ -173,9 +173,17 @@ public class Core extends MPlugin {
           profile.destroy();
         }
       });
-      Database.getInstance().close();
     }
 
+    Database database = Database.getInstance();
+    if (database != null) {
+      try {
+        database.close();
+      } catch (RuntimeException ex) {
+        this.getLogger().log(Level.SEVERE, "Failed to close the database during plugin shutdown.", ex);
+      }
+    }
+    validInit = false;
     // Atualização automática de JAR desativada até existir verificação de autenticidade do artefato.
     this.getLogger().info("O plugin foi desativado.");
   }

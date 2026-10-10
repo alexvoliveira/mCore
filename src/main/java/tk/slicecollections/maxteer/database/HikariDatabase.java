@@ -54,7 +54,9 @@ public class HikariDatabase extends Database {
       }, new ThreadPoolExecutor.AbortPolicy());
 
     try {
-      DataTable.listTables().forEach(table -> this.update(table.getInfo().create()));
+      for (DataTable table : DataTable.listTables()) {
+        this.updateOrThrow(table.getInfo().create());
+      }
       SchemaMigrator.migrate(this);
     } catch (RuntimeException ex) {
       this.executor.shutdownNow();
@@ -111,17 +113,28 @@ public class HikariDatabase extends Database {
   @Override
   public boolean getPreference(String player, String id, boolean def) {
     try (CachedRowSet rs = query("SELECT `preferences` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", player.toLowerCase(Locale.ROOT))) {
-      if (rs != null) {
-        JSONObject preferences = (JSONObject) new JSONParser().parse(rs.getString("preferences"));
-        Object value = preferences.get(id);
-        if (value instanceof Number) {
-          return ((Number) value).longValue() == 0L;
-        }
+      if (rs == null) {
+        return def;
       }
-    } catch (Exception ex) {
-      LOGGER.log(Level.WARNING, "Could not read preference '" + id + "' for player '" + player + "'.", ex);
+
+      final Object parsed;
+      try {
+        parsed = new JSONParser().parse(rs.getString("preferences"));
+      } catch (org.json.simple.parser.ParseException ex) {
+        throw new IllegalStateException("Stored preferences JSON is invalid for player '" + player + "'.", ex);
+      }
+      if (!(parsed instanceof JSONObject)) {
+        throw new IllegalStateException("Stored preferences value is not a JSON object for player '" + player + "'.");
+      }
+
+      Object value = ((JSONObject) parsed).get(id);
+      if (value instanceof Number) {
+        return ((Number) value).longValue() == 0L;
+      }
+      return def;
+    } catch (SQLException ex) {
+      throw new IllegalStateException("Could not read preferences for player '" + player + "'.", ex);
     }
-    return def;
   }
 
   @Override
@@ -209,7 +222,9 @@ public class HikariDatabase extends Database {
           continue;
         }
       } catch (SQLException ex) {
-        throw new ProfileLoadException(ex.getMessage());
+        throw new ProfileLoadException("Could not read table " + table.getInfo().name() + " for profile " + name + ".", ex);
+      } catch (RuntimeException ex) {
+        throw new ProfileLoadException("Database query failed while loading table " + table.getInfo().name() + " for profile " + name + ".", ex);
       }
 
       containerMap = table.getDefaultValues();
@@ -409,10 +424,10 @@ public class HikariDatabase extends Database {
 
   @Override
   public String exists(String name) {
-    try {
-      return this.query("SELECT `name` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", name.toLowerCase(Locale.ROOT)).getString("name");
-    } catch (Exception ex) {
-      return null;
+    try (CachedRowSet rs = this.query("SELECT `name` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", name.toLowerCase(Locale.ROOT))) {
+      return rs == null ? null : rs.getString("name");
+    } catch (SQLException ex) {
+      throw new IllegalStateException("Could not check whether profile '" + name + "' exists.", ex);
     }
   }
 
@@ -514,46 +529,24 @@ public class HikariDatabase extends Database {
 
   @Override
   public CachedRowSet query(String query, Object... vars) {
-    Connection connection = null;
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-    CachedRowSet rowSet = null;
-    try {
-      connection = getConnection();
-      ps = connection.prepareStatement(query);
+    try (Connection connection = getConnection();
+         PreparedStatement statement = connection.prepareStatement(query)) {
       for (int i = 0; i < vars.length; i++) {
-        ps.setObject(i + 1, vars[i]);
+        statement.setObject(i + 1, vars[i]);
       }
-      rs = ps.executeQuery();
-      rowSet = RowSetProvider.newFactory().createCachedRowSet();
-      rowSet.populate(rs);
 
-      if (rowSet.next()) {
-        return rowSet;
+      try (ResultSet result = statement.executeQuery()) {
+        CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
+        rowSet.populate(result);
+        if (rowSet.next()) {
+          return rowSet;
+        }
+        rowSet.close();
+        return null;
       }
     } catch (SQLException ex) {
-      LOGGER.log(Level.WARNING, "Nao foi possivel executar um Requisicao: ", ex);
-    } finally {
-      try {
-        if (connection != null && !connection.isClosed())
-          connection.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      }
-      try {
-        if (ps != null && !ps.isClosed())
-          ps.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      }
-      try {
-        if (rs != null && !rs.isClosed())
-          rs.close();
-      } catch (SQLException e) {
-        e.printStackTrace();
-      }
+      LOGGER.log(Level.WARNING, "Could not execute a database query.", ex);
+      throw new IllegalStateException("Database query failed.", ex);
     }
-
-    return null;
   }
 }

@@ -6,4 +6,8 @@ public class ProfileLoadException extends Exception {
   public ProfileLoadException(String reason) {
     super(reason);
   }
+
+  public ProfileLoadException(String reason, Throwable cause) {
+    super(reason, cause);
+  }
 }
