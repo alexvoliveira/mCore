@@ -151,10 +151,16 @@ public class Listeners implements Listener {
    * than its public API. Keep that compatibility boundary isolated in reflection
    * so this module can compile against the published API without packaging internals.
    */
-  private Object getLoginProfile(ProxiedPlayer player) throws ReflectiveOperationException {
-    Object pendingConnection = player.getPendingConnection();
-    Method method = pendingConnection.getClass().getMethod("getLoginProfile");
-    return method.invoke(pendingConnection);
+  private Object getLoginProfile(ProxiedPlayer player) {
+    try {
+      Object pendingConnection = player.getPendingConnection();
+      Method method = pendingConnection.getClass().getMethod("getLoginProfile");
+      return method.invoke(pendingConnection);
+    } catch (ReflectiveOperationException ex) {
+      Bungee.getInstance().getLogger().log(Level.WARNING,
+        "The running BungeeCord implementation does not expose its legacy login profile as expected.", ex);
+      return null;
+    }
   }
 
   private Object getProperties(Object profile) throws ReflectiveOperationException {
