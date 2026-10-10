@@ -3,7 +3,6 @@ package tk.slicecollections.maxteer.cmd;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import tk.slicecollections.maxteer.Core;
-import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.utils.SliceUpdater;
 
 /**
@@ -31,22 +30,21 @@ public class CoreCommand extends Commands {
 
       String action = args[0];
       if (action.equalsIgnoreCase("atualizar")) {
-        if (SliceUpdater.UPDATER != null) {
-          if (!SliceUpdater.UPDATER.canDownload) {
-            player.sendMessage(
-              " \n§6§l[MCORE]\n \n§aA atualização já está baixada, ela será aplicada na próxima reinicialização do servidor. Caso deseje aplicá-la agora, utilize o comando /stop.\n ");
-            return;
-          }
-          SliceUpdater.UPDATER.canDownload = false;
-          SliceUpdater.UPDATER.downloadUpdate(player);
-        } else {
+        SliceUpdater updater = SliceUpdater.UPDATER;
+        if (updater == null || !updater.checkCompleted) {
+          player.sendMessage("§7A verificação de versão ainda não foi concluída. Consulte os logs e tente novamente.");
+        } else if (updater.checkFailed) {
+          player.sendMessage("§cNão foi possível verificar a versão. Não instale JARs cuja autenticidade não tenha sido confirmada.");
+        } else if (!updater.updateAvailable) {
           player.sendMessage("§aO plugin já se encontra em sua última versão.");
+        } else {
+          updater.downloadUpdate(player);
         }
       } else if (action.equalsIgnoreCase("converter")) {
         player.sendMessage("§cA conversão online foi removida para evitar migração insegura.");
         player.sendMessage("§7Use o procedimento offline em docs/DATA-MIGRATION.md e valide o relatório antes de ativar o banco migrado.");
       } else {
-        player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Converter seu Banco de Dados.\n ");
+        player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Instruções para migração segura do banco.\n ");
       }
     } else {
       sender.sendMessage("§cApenas jogadores podem utilizar este comando.");

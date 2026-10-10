@@ -85,14 +85,14 @@ public class Listeners implements Listener {
     if (player.hasPermission("mcore.admin")) {
       if (SliceUpdater.UPDATER != null && SliceUpdater.UPDATER.canDownload) {
         TextComponent component = new TextComponent("");
-        for (BaseComponent components : TextComponent.fromLegacyText(" \n §6§l[MCORE]\n \n §7O mCore possui uma nova atualização para ser feita, para prosseguir basta clicar ")) {
+        for (BaseComponent components : TextComponent.fromLegacyText(" \n §6§l[MCORE]\n \n §7O mCore possui uma atualização disponível. A instalação automática está desativada; clique para ver as instruções manuais. ")) {
           component.addExtra(components);
         }
-        TextComponent click = new TextComponent("AQUI");
+        TextComponent click = new TextComponent("INSTRUÇÕES");
         click.setColor(ChatColor.GREEN);
         click.setBold(true);
         click.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mc atualizar"));
-        click.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§7Clique aqui para atualizar o mCore.")));
+        click.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§7A instalação automática está desativada. Consulte as instruções manuais.")));
         component.addExtra(click);
         for (BaseComponent components : TextComponent.fromLegacyText("§7.\n ")) {
           component.addExtra(components);
