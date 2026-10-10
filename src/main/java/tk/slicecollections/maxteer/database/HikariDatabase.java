@@ -58,6 +58,10 @@ public class HikariDatabase extends Database {
         this.updateOrThrow(table.getInfo().create());
       }
       SchemaMigrator.migrate(this);
+    } catch (SQLException ex) {
+      this.executor.shutdownNow();
+      this.closeConnection();
+      throw new IllegalStateException("Could not create the mCore base schema.", ex);
     } catch (RuntimeException ex) {
       this.executor.shutdownNow();
       this.closeConnection();
