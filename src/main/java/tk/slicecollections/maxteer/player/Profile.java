@@ -192,11 +192,15 @@ public class Profile {
   }
 
   public void saveSync() {
-    if (this.name == null || this.tableMap == null) {
-      return;
-    }
+    this.saveSyncChecked();
+  }
 
-    Database.getInstance().saveSync(this.name, this.tableMap);
+  public boolean saveSyncChecked() {
+    if (this.name == null || this.tableMap == null) {
+      return true;
+    }
+    Database database = Database.getInstance();
+    return database != null && database.saveSyncChecked(this.name, this.tableMap);
   }
 
   public void destroy() {
@@ -226,7 +230,7 @@ public class Profile {
 
   public void setPlayer(Player player) {
     this.player = player;
-    UUID_CACHE.put(this.name.toLowerCase(), player.getUniqueId());
+    UUID_CACHE.put(this.name.toLowerCase(Locale.ROOT), player.getUniqueId());
   }
 
   public Player getPlayer() {

@@ -168,8 +168,11 @@ public class Core extends MPlugin {
       Bukkit.getOnlinePlayers().forEach(player -> {
         Profile profile = Profile.unloadProfile(player.getName());
         if (profile != null) {
-          profile.saveSync();
-          this.getLogger().info("Saved " + profile.getName() + "!");
+          if (profile.saveSyncChecked()) {
+            this.getLogger().info("Saved " + profile.getName() + "!");
+          } else {
+            this.getLogger().severe("Synchronous profile save failed; verify the database before shutdown: " + profile.getName());
+          }
           profile.destroy();
         }
       });

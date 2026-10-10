@@ -39,6 +39,8 @@ public abstract class Database {
 
   public abstract void saveSync(String name, Map<String, Map<String, DataContainer>> tableMap);
 
+  public abstract boolean saveSyncChecked(String name, Map<String, Map<String, DataContainer>> tableMap);
+
   public abstract String exists(String name);
 
   public abstract CachedRowSet query(String sql, Object... parameters);

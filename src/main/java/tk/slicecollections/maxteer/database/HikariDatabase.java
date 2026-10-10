@@ -71,12 +71,19 @@ public class HikariDatabase extends Database {
 
   @Override
   public void setupBoosters() {
-    if (!Manager.BUNGEE) {
-      for (String mg : tk.slicecollections.maxteer.Core.minigames) {
-        if (query("SELECT * FROM `mCoreNetworkBooster` WHERE `id` = ?", mg) == null) {
-          execute("INSERT INTO `mCoreNetworkBooster` VALUES (?, ?, ?, ?)", mg, "Maxteer", 1.0, 0L);
-        }
+    if (Manager.BUNGEE) {
+      return;
+    }
+
+    try {
+      for (String minigame : tk.slicecollections.maxteer.Core.minigames) {
+        this.updateOrThrow(
+          "INSERT IGNORE INTO `mCoreNetworkBooster` (`id`, `booster`, `multiplier`, `expires`) VALUES (?, ?, ?, ?)",
+          minigame, "Maxteer", 1.0, 0L
+        );
       }
+    } catch (SQLException ex) {
+      throw new IllegalStateException("Could not initialize network booster records.", ex);
     }
   }
 
@@ -215,35 +222,66 @@ public class HikariDatabase extends Database {
   public Map<String, Map<String, DataContainer>> load(String name) throws ProfileLoadException  {
     Map<String, Map<String, DataContainer>> tableMap = new HashMap<>();
     for (DataTable table : DataTable.listTables()) {
-      Map<String, DataContainer> containerMap = new LinkedHashMap<>();
-      tableMap.put(table.getInfo().name(), containerMap);
+      String tableName = table.getInfo().name();
+      Map<String, DataContainer> rows = new LinkedHashMap<>();
+      tableMap.put(tableName, rows);
 
-      try (CachedRowSet rs = this.query(table.getInfo().select(), name.toLowerCase(Locale.ROOT))) {
-        if (rs != null) {
-          for (int collumn = 2; collumn <= rs.getMetaData().getColumnCount(); collumn++) {
-            containerMap.put(rs.getMetaData().getColumnName(collumn), new DataContainer(rs.getObject(collumn)));
-          }
+      try (CachedRowSet result = this.query(table.getInfo().select(), name.toLowerCase(Locale.ROOT))) {
+        if (result != null) {
+          this.populateTableRow(rows, result);
           continue;
         }
       } catch (SQLException ex) {
-        throw new ProfileLoadException("Could not read table " + table.getInfo().name() + " for profile " + name + ".", ex);
+        throw new ProfileLoadException("Could not read table " + tableName + " for profile " + name + ".", ex);
       } catch (RuntimeException ex) {
-        throw new ProfileLoadException("Database query failed while loading table " + table.getInfo().name() + " for profile " + name + ".", ex);
+        throw new ProfileLoadException("Database query failed while loading table " + tableName + " for profile " + name + ".", ex);
       }
 
-      containerMap = table.getDefaultValues();
-      tableMap.put(table.getInfo().name(), containerMap);
-      List<Object> list = new ArrayList<>();
-      list.add(name);
-      list.addAll(containerMap.values().stream().map(DataContainer::get).collect(Collectors.toList()));
-      this.execute(table.getInfo().insert(), list.toArray());
-      list.clear();
+      rows = table.getDefaultValues();
+      tableMap.put(tableName, rows);
+      List<Object> values = new ArrayList<>();
+      values.add(name);
+      values.addAll(rows.values().stream().map(DataContainer::get).collect(Collectors.toList()));
+
+      try {
+        this.updateOrThrow(table.getInfo().insert(), values.toArray());
+      } catch (SQLException insertError) {
+        // Two server instances may race to create the same profile; accept that only if the row exists.
+        try (CachedRowSet existing = this.query(table.getInfo().select(), name.toLowerCase(Locale.ROOT))) {
+          if (existing == null) {
+            throw insertError;
+          }
+          this.populateTableRow(rows, existing);
+          continue;
+        } catch (SQLException | RuntimeException rereadError) {
+          insertError.addSuppressed(rereadError);
+          throw new ProfileLoadException("Could not create or re-read table " + tableName + " for profile " + name + ".", insertError);
+        }
+      }
+
+      try (CachedRowSet inserted = this.query(table.getInfo().select(), name.toLowerCase(Locale.ROOT))) {
+        if (inserted == null) {
+          throw new SQLException("Inserted profile row could not be read back.");
+        }
+        this.populateTableRow(rows, inserted);
+      } catch (SQLException ex) {
+        throw new ProfileLoadException("Could not verify inserted row in table " + tableName + " for profile " + name + ".", ex);
+      } catch (RuntimeException ex) {
+        throw new ProfileLoadException("Database verification failed for table " + tableName + " and profile " + name + ".", ex);
+      }
     }
 
     return tableMap;
   }
 
   @Override
+  private void populateTableRow(Map<String, DataContainer> rows, CachedRowSet result) throws SQLException {
+    rows.clear();
+    for (int column = 2; column <= result.getMetaData().getColumnCount(); column++) {
+      rows.put(result.getMetaData().getColumnName(column), new DataContainer(result.getObject(column)));
+    }
+  }
+
   public void save(String name, Map<String, Map<String, DataContainer>> tableMap) {
     this.saveAsync(name, tableMap);
   }
@@ -265,6 +303,29 @@ public class HikariDatabase extends Database {
 
   @Override
   public void saveSync(String name, Map<String, Map<String, DataContainer>> tableMap) {
+    this.saveSyncChecked(name, tableMap);
+  }
+
+  @Override
+  public boolean saveSyncChecked(String name, Map<String, Map<String, DataContainer>> tableMap) {
+    if (name == null || tableMap == null) {
+      return true;
+    }
+    List<TableSnapshot> snapshot = this.captureSnapshot(tableMap);
+    if (snapshot.isEmpty()) {
+      return true;
+    }
+    try {
+      this.persistSnapshot(name, snapshot);
+      this.acknowledgeSnapshot(snapshot);
+      return true;
+    } catch (Exception ex) {
+      LOGGER.log(Level.WARNING, "Could not synchronously save profile " + name + "; dirty values were retained for retry.", ex);
+      return false;
+    }
+  }
+
+
     if (name == null || tableMap == null) {
       return;
     }

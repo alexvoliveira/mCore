@@ -117,7 +117,9 @@ public class Listeners implements Listener {
       TitleManager.leaveServer(profile);
       if (!((CraftServer) Bukkit.getServer()).getHandle().getServer().isRunning() || RESTART_WATCHDOG_STOPPING.get(RESTART_WATCHDOG.get(null))) {
         // server stopped - save SYNC
-        profile.saveSync();
+        if (!profile.saveSyncChecked()) {
+          LOGGER.severe("Synchronous profile save failed; verify the database: " + profile.getName());
+        }
         Core.getInstance().getLogger().info("Saved " + profile.getName() + "!");
       } else {
         // server running - save ASYNC
