@@ -613,19 +613,54 @@ public class HikariDatabase extends Database {
     }
   }
 
-  public void openConnection() {
-    HikariConfig config = new HikariConfig();
-    config.setPoolName("mConnectionPool");
-    // Keep HikariCP defaults unless workload measurements justify pool tuning.
-    config.setDriverClassName("com.mysql.cj.jdbc.Driver");
-    String jdbcUrl = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.dbname +
-      "?sslMode=VERIFY_IDENTITY&connectTimeout=10000&socketTimeout=30000&useUnicode=yes&characterEncoding=UTF-8";
-    config.setJdbcUrl(jdbcUrl);
-    config.setUsername(this.username);
-    config.setPassword(this.password);
+  /**
+   * Configure a project CA without disabling server certificate or hostname validation.
+   * Aiven's project CA can be placed at plugins/mCore/ca.pem, or provided by environment.
+   */
+  private void configureTlsTrust(HikariConfig config) {
+    String configuredCaPath = System.getenv("MCORE_MYSQL_CA_CERT");
+    java.io.File caFile = configuredCaPath == null || configuredCaPath.trim().isEmpty()
+      ? new java.io.File("plugins/mCore/ca.pem")
+      : new java.io.File(configuredCaPath.trim());
 
-    // Aiven's CA must be trusted explicitly when it is not present in the JVM trust store.
-    // Configure both environment variables; never disable certificate validation.
+    if ((configuredCaPath != null && !configuredCaPath.trim().isEmpty()) || caFile.isFile()) {
+      if (!caFile.isFile() || !caFile.canRead()) {
+        throw new IllegalStateException("MySQL CA certificate file is not readable: " + caFile.getAbsolutePath());
+      }
+      try (java.io.InputStream input = new java.io.FileInputStream(caFile)) {
+        java.util.Collection<? extends java.security.cert.Certificate> certificates =
+          java.security.cert.CertificateFactory.getInstance("X.509").generateCertificates(input);
+        if (certificates.isEmpty()) {
+          throw new IllegalStateException("MySQL CA certificate file contains no X.509 certificates: " + caFile.getAbsolutePath());
+        }
+
+        java.security.KeyStore trustStore = java.security.KeyStore.getInstance("PKCS12");
+        trustStore.load(null, null);
+        int index = 1;
+        for (java.security.cert.Certificate certificate : certificates) {
+          trustStore.setCertificateEntry("mysql-ca-" + index++, certificate);
+        }
+
+        // The truststore contains public CA certificates only; generate a per-process password.
+        String storePassword = UUID.randomUUID().toString() + UUID.randomUUID().toString();
+        java.io.File generatedTrustStore = java.io.File.createTempFile("mcore-mysql-trust-", ".p12");
+        generatedTrustStore.deleteOnExit();
+        try (java.io.FileOutputStream output = new java.io.FileOutputStream(generatedTrustStore)) {
+          trustStore.store(output, storePassword.toCharArray());
+        }
+
+        config.addDataSourceProperty("trustCertificateKeyStoreUrl", generatedTrustStore.toURI().toURL().toExternalForm());
+        config.addDataSourceProperty("trustCertificateKeyStoreType", "PKCS12");
+        config.addDataSourceProperty("trustCertificateKeyStorePassword", storePassword);
+        LOGGER.info("Loaded MySQL TLS CA certificate(s) from " + caFile.getAbsolutePath());
+        return;
+      } catch (IllegalStateException ex) {
+        throw ex;
+      } catch (Exception ex) {
+        throw new IllegalStateException("Could not load the MySQL CA certificate from " + caFile.getAbsolutePath() + ".", ex);
+      }
+    }
+
     String trustStorePath = System.getenv("MCORE_MYSQL_TRUSTSTORE");
     String trustStorePassword = System.getenv("MCORE_MYSQL_TRUSTSTORE_PASSWORD");
     if (trustStorePath != null && !trustStorePath.trim().isEmpty()) {
@@ -643,7 +678,26 @@ public class HikariDatabase extends Database {
       }
       config.addDataSourceProperty("trustCertificateKeyStoreType", "PKCS12");
       config.addDataSourceProperty("trustCertificateKeyStorePassword", trustStorePassword);
+      return;
     }
+
+    if (this.host != null && this.host.trim().toLowerCase(Locale.ROOT).endsWith(".aivencloud.com")) {
+      throw new IllegalStateException("Aiven MySQL TLS requires its project CA certificate. Download the CA certificate from Aiven and save it as plugins/mCore/ca.pem, or set MCORE_MYSQL_CA_CERT to its absolute path. Server certificate and hostname verification remain enabled.");
+    }
+  }
+
+  public void openConnection() {
+    HikariConfig config = new HikariConfig();
+    config.setPoolName("mConnectionPool");
+    // Keep HikariCP defaults unless workload measurements justify pool tuning.
+    config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+    String jdbcUrl = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.dbname +
+      "?sslMode=VERIFY_IDENTITY&connectTimeout=10000&socketTimeout=30000&useUnicode=yes&characterEncoding=UTF-8";
+    config.setJdbcUrl(jdbcUrl);
+    config.setUsername(this.username);
+    config.setPassword(this.password);
+
+    configureTlsTrust(config);
     config.addDataSourceProperty("autoReconnect", "true");
     this.dataSource = new HikariDataSource(config);
 
