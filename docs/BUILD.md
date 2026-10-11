@@ -25,3 +25,25 @@ O JAR de saída configurado é `build/libs/mCore.jar`. O `pom.xml` fica preserva
 ## Segurança e ambiente
 
 Não adicione credenciais de banco ao repositório. Configure credenciais nos arquivos/configurações de runtime e restrinja os privilégios da conta SQL ao necessário. As URLs novas exigem TLS com validação de identidade/certificado; configure certificados e nomes DNS corretos no ambiente.
+
+
+## MySQL TLS with Aiven
+
+The default connection uses `sslMode=VERIFY_IDENTITY`: traffic is encrypted and the server certificate and hostname are validated. Do not change this to `DISABLED` or accept arbitrary certificates to work around a TLS error.
+
+For Aiven, download the service CA certificate from the Aiven console and import it into a local PKCS12 truststore. Run this on the machine hosting the BungeeCord/Bukkit process (the command prompts for a truststore password):
+
+```sh
+keytool -importcert -alias aiven-mysql-ca -file ca.pem -keystore aiven-truststore.p12 -storetype PKCS12
+```
+
+Set these environment variables for the actual server process:
+- `MCORE_MYSQL_PASSWORD`: the current MySQL password.
+- `MCORE_MYSQL_TRUSTSTORE`: absolute path to `aiven-truststore.p12`.
+- `MCORE_MYSQL_TRUSTSTORE_PASSWORD`: the password chosen for that truststore.
+
+The application reads the truststore settings only when both its path and password are configured. Keep the truststore and credentials outside the repository, restrict file permissions, and restart the Java process after changing environment variables. The truststore contains the CA certificate, not the database password.
+
+The checked-in `src/main/resources/config.yml` contains the Aiven host, port, database, and username, but it is only copied on first startup. On an existing installation, update `plugins/mCore/config.yml` manually to the same endpoint; do not put the database password there. Rotate any password that has been exposed and set the replacement through `MCORE_MYSQL_PASSWORD`.
+
+Connection attempts now have explicit 10-second connect and 30-second socket timeouts. These timeouts do not replace correct DNS, network access, CA trust, or hostname validation.
