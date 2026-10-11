@@ -58,7 +58,18 @@ public abstract class Database {
   /** Creates the only supported production persistence implementation: MySQL via HikariCP. */
   public static synchronized void setupDatabase(String mysqlHost, String mysqlPort, String mysqlDbname, String mysqlUsername, String mysqlPassword) {
     LOGGER = Manager.BUNGEE ? tk.slicecollections.maxteer.bungee.Bungee.getInstance().getLogger() : tk.slicecollections.maxteer.Core.getInstance().getLogger();
-    instance = new HikariDatabase(mysqlHost, mysqlPort, mysqlDbname, mysqlUsername, mysqlPassword);
+    String environmentPassword = System.getenv("MCORE_MYSQL_PASSWORD");
+    if (environmentPassword != null && !environmentPassword.isEmpty()) {
+      mysqlPassword = environmentPassword;
+    }
+    if (mysqlHost == null || mysqlHost.trim().isEmpty()
+        || mysqlPort == null || mysqlPort.trim().isEmpty()
+        || mysqlDbname == null || mysqlDbname.trim().isEmpty()
+        || mysqlUsername == null || mysqlUsername.trim().isEmpty()
+        || mysqlPassword == null || mysqlPassword.isEmpty()) {
+      throw new IllegalStateException("MySQL connection settings are incomplete. Configure host, port, database, username, and MCORE_MYSQL_PASSWORD.");
+    }
+    instance = new HikariDatabase(mysqlHost.trim(), mysqlPort.trim(), mysqlDbname.trim(), mysqlUsername.trim(), mysqlPassword);
     if (cacheTimer != null) {
       cacheTimer.cancel();
     }
