@@ -619,10 +619,31 @@ public class HikariDatabase extends Database {
     // Keep HikariCP defaults unless workload measurements justify pool tuning.
     config.setDriverClassName("com.mysql.cj.jdbc.Driver");
     String jdbcUrl = "jdbc:mysql://" + this.host + ":" + this.port + "/" + this.dbname +
-      "?sslMode=VERIFY_IDENTITY&useUnicode=yes&characterEncoding=UTF-8";
+      "?sslMode=VERIFY_IDENTITY&connectTimeout=10000&socketTimeout=30000&useUnicode=yes&characterEncoding=UTF-8";
     config.setJdbcUrl(jdbcUrl);
     config.setUsername(this.username);
     config.setPassword(this.password);
+
+    // Aiven's CA must be trusted explicitly when it is not present in the JVM trust store.
+    // Configure both environment variables; never disable certificate validation.
+    String trustStorePath = System.getenv("MCORE_MYSQL_TRUSTSTORE");
+    String trustStorePassword = System.getenv("MCORE_MYSQL_TRUSTSTORE_PASSWORD");
+    if (trustStorePath != null && !trustStorePath.trim().isEmpty()) {
+      java.io.File trustStore = new java.io.File(trustStorePath.trim());
+      if (!trustStore.isFile() || !trustStore.canRead()) {
+        throw new IllegalStateException("MCORE_MYSQL_TRUSTSTORE must point to a readable PKCS12 truststore file.");
+      }
+      if (trustStorePassword == null || trustStorePassword.isEmpty()) {
+        throw new IllegalStateException("MCORE_MYSQL_TRUSTSTORE_PASSWORD is required when MCORE_MYSQL_TRUSTSTORE is configured.");
+      }
+      try {
+        config.addDataSourceProperty("trustCertificateKeyStoreUrl", trustStore.toURI().toURL().toExternalForm());
+      } catch (java.net.MalformedURLException ex) {
+        throw new IllegalStateException("Invalid MySQL TLS truststore path.", ex);
+      }
+      config.addDataSourceProperty("trustCertificateKeyStoreType", "PKCS12");
+      config.addDataSourceProperty("trustCertificateKeyStorePassword", trustStorePassword);
+    }
     config.addDataSourceProperty("autoReconnect", "true");
     this.dataSource = new HikariDataSource(config);
 
