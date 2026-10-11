@@ -29,21 +29,15 @@ Não adicione credenciais de banco ao repositório. Configure credenciais nos ar
 
 ## MySQL TLS with Aiven
 
-The default connection uses `sslMode=VERIFY_IDENTITY`: traffic is encrypted and the server certificate and hostname are validated. Do not change this to `DISABLED` or accept arbitrary certificates to work around a TLS error.
+The JDBC URL uses `sslMode=VERIFY_IDENTITY`: traffic is encrypted, the server certificate chain is validated, and the hostname must match the certificate. Do not set `sslMode=DISABLED` or accept arbitrary certificates.
 
-For Aiven, download the service CA certificate from the Aiven console and import it into a local PKCS12 truststore. Run this on the machine hosting the BungeeCord/Bukkit process (the command prompts for a truststore password):
+1. In the Aiven Console, open the MySQL service and download **CA certificate** from **Overview → Connection information**.
+2. Save the downloaded file as `plugins/mCore/ca.pem` on the machine running BungeeCord (or the Bukkit server if it connects directly to MySQL). The plugin can read this PEM certificate directly and generate a temporary PKCS12 truststore; running `keytool` is not required.
+3. Alternatively, set `MCORE_MYSQL_CA_CERT` to the absolute path of the downloaded PEM file.
+4. Set `MCORE_MYSQL_PASSWORD` in the environment of the actual Java process. Restart the process after changing environment variables.
 
-```sh
-keytool -importcert -alias aiven-mysql-ca -file ca.pem -keystore aiven-truststore.p12 -storetype PKCS12
-```
+The previous PKCS12 method remains supported: set both `MCORE_MYSQL_TRUSTSTORE` and `MCORE_MYSQL_TRUSTSTORE_PASSWORD`. When a CA PEM file is present, it takes precedence and is converted into a temporary truststore for the JDBC connection.
 
-Set these environment variables for the actual server process:
-- `MCORE_MYSQL_PASSWORD`: the current MySQL password.
-- `MCORE_MYSQL_TRUSTSTORE`: absolute path to `aiven-truststore.p12`.
-- `MCORE_MYSQL_TRUSTSTORE_PASSWORD`: the password chosen for that truststore.
+For the existing installation, the config file is usually `plugins/mCore/config.yml`; the checked-in resource only supplies defaults for new installations. Confirm it contains the current Aiven host, port, database, and username. Do not put the database password in the repository or in a version-controlled YAML file. Rotate passwords that have been exposed.
 
-The application reads the truststore settings only when both its path and password are configured. Keep the truststore and credentials outside the repository, restrict file permissions, and restart the Java process after changing environment variables. The truststore contains the CA certificate, not the database password.
-
-The checked-in `src/main/resources/config.yml` contains the Aiven host, port, database, and username, but it is only copied on first startup. On an existing installation, update `plugins/mCore/config.yml` manually to the same endpoint; do not put the database password there. Rotate any password that has been exposed and set the replacement through `MCORE_MYSQL_PASSWORD`.
-
-Connection attempts now have explicit 10-second connect and 30-second socket timeouts. These timeouts do not replace correct DNS, network access, CA trust, or hostname validation.
+If the Aiven CA file is missing, the plugin now fails early with an explicit configuration message instead of proceeding to an opaque TLS handshake failure. TLS certificate and hostname verification remain enabled.
