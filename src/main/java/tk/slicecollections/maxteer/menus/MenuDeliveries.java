@@ -1,100 +1,86 @@
 package tk.slicecollections.maxteer.menus;
 
-import org.bukkit.Material;
+import com.henryfabio.minecraft.inventoryapi.editor.InventoryEditor;
+import com.henryfabio.minecraft.inventoryapi.viewer.Viewer;
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
-import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitTask;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.database.data.container.DeliveriesContainer;
 import tk.slicecollections.maxteer.deliveries.Delivery;
-import tk.slicecollections.maxteer.libraries.menu.UpdatablePlayerMenu;
 import tk.slicecollections.maxteer.player.Profile;
 import tk.slicecollections.maxteer.utils.enums.EnumSound;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * @author Maxter
- */
-public class MenuDeliveries extends UpdatablePlayerMenu {
-
-  @EventHandler
-  public void onInventoryClick(InventoryClickEvent evt) {
-    if (evt.getInventory().equals(this.getInventory())) {
-      evt.setCancelled(true);
-
-      if (evt.getWhoClicked().equals(this.player)) {
-        if (evt.getClickedInventory() != null && evt.getClickedInventory().equals(this.getInventory())) {
-          ItemStack item = evt.getCurrentItem();
-
-          if (item != null && item.getType() != Material.AIR) {
-            Delivery delivery = this.deliveries.get(item);
-            if (delivery != null) {
-              DeliveriesContainer container = this.profile.getDeliveriesContainer();
-              if (container.alreadyClaimed(delivery.getId()) || !delivery.hasPermission(player)) {
-                EnumSound.ENDERMAN_TELEPORT.play(this.player, 0.5F, 1.0F);
-              } else {
-                EnumSound.LEVEL_UP.play(this.player, 1.0F, 1.0F);
-                container.claimDelivery(delivery.getId(), delivery.getDays());
-                delivery.listRewards().forEach(reward -> reward.dispatch(this.profile));
-                this.player.sendMessage(delivery.getMessage());
-                this.player.closeInventory();
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private Profile profile;
-  private Map<ItemStack, Delivery> deliveries;
+public class MenuDeliveries extends PlayerMenuInventory implements Listener {
+  private final Profile profile;
+  private final Map<Integer, Delivery> deliveries = new HashMap<>();
+  private Inventory inventory;
+  private BukkitTask updateTask;
 
   public MenuDeliveries(Profile profile) {
-    super(profile.getPlayer(), "Entregas", 5);
+    super(profile.getPlayer(), "mcore.deliveries", "Entregas", 5);
     this.profile = profile;
-    this.deliveries = new HashMap<>();
-
-    this.update();
-    this.register(Core.getInstance(), 20);
-    this.open();
+    Bukkit.getPluginManager().registerEvents(this, Core.getInstance());
+    openForPlayer();
+    this.updateTask = Bukkit.getScheduler().runTaskTimer(Core.getInstance(), () -> {
+      if (inventory != null && player.getOpenInventory().getTopInventory().equals(inventory)) updateInventory(player);
+      else cancel();
+    }, 20L, 20L);
   }
 
   @Override
-  public void update() {
-    this.deliveries.clear();
+  protected void configureInventory(Viewer viewer, InventoryEditor editor) {
+    this.inventory = editor.getInventory();
+  }
+
+  @Override
+  protected void update(Viewer viewer, InventoryEditor editor) {
+    deliveries.clear();
     for (Delivery delivery : Delivery.listDeliveries()) {
-      ItemStack item = delivery.getIcon(this.profile);
-      this.setItem(delivery.getSlot(), item);
-      this.deliveries.put(item, delivery);
+      ItemStack item = delivery.getIcon(profile);
+      deliveries.put(delivery.getSlot(), delivery);
+      setMenuItem(editor, delivery.getSlot(), item);
     }
-
-    this.player.updateInventory();
   }
 
-  public void cancel() {
-    super.cancel();
+  @Override
+  protected void onClick(int slot) {
+    Delivery delivery = deliveries.get(slot);
+    if (delivery == null) return;
+    DeliveriesContainer container = profile.getDeliveriesContainer();
+    if (container.alreadyClaimed(delivery.getId()) || !delivery.hasPermission(player)) {
+      EnumSound.ENDERMAN_TELEPORT.play(player, 0.5F, 1.0F);
+      return;
+    }
+    EnumSound.LEVEL_UP.play(player, 1.0F, 1.0F);
+    container.claimDelivery(delivery.getId(), delivery.getDays());
+    delivery.listRewards().forEach(reward -> reward.dispatch(profile));
+    player.sendMessage(delivery.getMessage());
+    player.closeInventory();
+  }
+
+  private void cancel() {
+    if (updateTask != null) { updateTask.cancel(); updateTask = null; }
     HandlerList.unregisterAll(this);
-    this.profile = null;
-    this.deliveries.clear();
-    this.deliveries = null;
+    deliveries.clear();
   }
 
   @EventHandler
-  public void onPlayerQuit(PlayerQuitEvent evt) {
-    if (evt.getPlayer().equals(this.player)) {
-      this.cancel();
-    }
+  public void onPlayerQuit(PlayerQuitEvent event) {
+    if (event.getPlayer().equals(player)) cancel();
   }
 
   @EventHandler
-  public void onInventoryClose(InventoryCloseEvent evt) {
-    if (evt.getPlayer().equals(this.player) && evt.getInventory().equals(this.getInventory())) {
-      this.cancel();
-    }
+  public void onInventoryClose(InventoryCloseEvent event) {
+    if (inventory != null && event.getPlayer().equals(player) && event.getInventory().equals(inventory)) cancel();
   }
 }
