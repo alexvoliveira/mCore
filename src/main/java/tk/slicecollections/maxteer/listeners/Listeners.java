@@ -1,6 +1,5 @@
 package tk.slicecollections.maxteer.listeners;
 
-import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -32,9 +31,7 @@ import tk.slicecollections.maxteer.plugin.logger.MLogger;
 import tk.slicecollections.maxteer.reflection.Accessors;
 import tk.slicecollections.maxteer.reflection.acessors.FieldAccessor;
 import tk.slicecollections.maxteer.titles.TitleManager;
-import tk.slicecollections.maxteer.utils.SliceUpdater;
 import tk.slicecollections.maxteer.utils.StringUtils;
-import tk.slicecollections.maxteer.utils.enums.EnumSound;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -77,31 +74,6 @@ public class Listeners implements Listener {
     }
 
     profile.setPlayer(evt.getPlayer());
-  }
-
-  @EventHandler(priority = EventPriority.MONITOR)
-  public void onPlayerJoin(PlayerJoinEvent evt) {
-    Player player = evt.getPlayer();
-    if (player.hasPermission("mcore.admin")) {
-      if (SliceUpdater.UPDATER != null && SliceUpdater.UPDATER.canDownload) {
-        TextComponent component = new TextComponent("");
-        for (BaseComponent components : TextComponent.fromLegacyText(" \n §6§l[MCORE]\n \n §7O mCore possui uma atualização disponível. A instalação automática está desativada; clique para ver as instruções manuais. ")) {
-          component.addExtra(components);
-        }
-        TextComponent click = new TextComponent("INSTRUÇÕES");
-        click.setColor(ChatColor.GREEN);
-        click.setBold(true);
-        click.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mc atualizar"));
-        click.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§7A instalação automática está desativada. Consulte as instruções manuais.")));
-        component.addExtra(click);
-        for (BaseComponent components : TextComponent.fromLegacyText("§7.\n ")) {
-          component.addExtra(components);
-        }
-
-        player.spigot().sendMessage(component);
-        EnumSound.LEVEL_UP.play(player, 1.0F, 1.0F);
-      }
-    }
   }
 
   private static final FieldAccessor<WatchdogThread> RESTART_WATCHDOG = Accessors.getField(WatchdogThread.class, "instance", WatchdogThread.class);
