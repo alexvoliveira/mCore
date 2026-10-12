@@ -22,6 +22,7 @@ repositories {
     maven { url = uri("https://repo.dmulloy2.net/repository/public/") }
     maven { url = uri("https://repo.glaremasters.me/repository/public/") }
     maven { url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/") }
+    maven { url = uri("https://jitpack.io") }
 }
 
 dependencies {
@@ -32,7 +33,7 @@ dependencies {
 
     implementation("com.zaxxer:HikariCP:3.4.5")
     implementation("com.mysql:mysql-connector-j:8.0.33")
-
+    implementation("com.github.HenryFabio:inventory-api:2.0.3")
 }
 
 sourceSets {
