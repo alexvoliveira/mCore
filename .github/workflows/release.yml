@@ -95,12 +95,11 @@ jobs:
         run: sha256sum dist/mCore.jar > dist/mCore.jar.sha256
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ github.ref_name }}
-          name: mCore ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            dist/mCore.jar
-            dist/mCore.jar.sha256
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/mCore.jar \
+            dist/mCore.jar.sha256 \
+            --title "mCore ${GITHUB_REF_NAME}" \
+            --generate-notes
