@@ -1,0 +1,106 @@
+name: mCore 4.1 - Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mcore-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build mCore.jar
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+          cache: gradle
+
+      - name: Prepare Spigot 1.8.8 API and NMS
+        uses: SpraxDev/Action-SpigotMC@v5
+        with:
+          versions: "1.8.8"
+          generateSrc: false
+          generateDoc: false
+
+      - name: Run importer tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Build and package shaded plugin
+        run: ./gradlew --no-daemon clean build
+
+      - name: Verify generated JAR
+        shell: bash
+        run: |
+          test -s build/libs/mCore.jar
+          echo "Generated JAR:"
+          ls -lh build/libs/mCore.jar
+
+      - name: Upload mCore artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mCore-jar
+          path: build/libs/mCore.jar
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches project version
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' build.gradle.kts | head -n 1)"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read project version from build.gradle.kts"
+            exit 1
+          fi
+          if [ "$VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Tag version '$TAG_VERSION' does not match build.gradle.kts version '$VERSION'"
+            exit 1
+          fi
+
+      - name: Download built JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: mCore-jar
+          path: dist
+
+      - name: Generate SHA-256 checksum
+        run: sha256sum dist/mCore.jar > dist/mCore.jar.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          name: mCore ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/mCore.jar
+            dist/mCore.jar.sha256
