@@ -1,7 +1,7 @@
 package tk.slicecollections.maxteer;
 
 import com.comphenix.protocol.ProtocolLibrary;
-import com.henryfabio.minecraft.inventoryapi.listener.CustomInventoryListener;
+import com.henryfabio.minecraft.inventoryapi.manager.InventoryManager;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.PlaceholderAPIPlugin;
 import org.bukkit.Bukkit;
@@ -128,9 +128,7 @@ public class Core extends MPlugin {
 
     PlaceholderAPI.registerExpansion(new MCoreExpansion());
 
-    // inventory-api's enable() schedules its updater asynchronously; register only its listener here.
-    // Dynamic mCore menus refresh on the Bukkit main thread instead.
-    Bukkit.getPluginManager().registerEvents(new CustomInventoryListener(), this);
+    InventoryManager.enable(this);
     Bukkit.getPluginManager().registerEvents(new InventoryMenuListener(), this);
 
     Database.setupDatabase(

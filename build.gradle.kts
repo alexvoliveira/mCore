@@ -65,6 +65,10 @@ tasks.shadowJar {
     mergeServiceFiles()
     // Preserve service descriptors; only remove invalid/irrelevant signature files.
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/*.EC")
+
+    // Isolate the embedded API package from other plugins using the same library.
+    // Bukkit API classes (including org.bukkit.inventory.Inventory) must not be relocated.
+    relocate("com.henryfabio.minecraft.inventoryapi", "tk.slicecollections.maxteer.shaded.inventoryapi")
 }
 
 tasks.assemble {
