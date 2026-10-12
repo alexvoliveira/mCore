@@ -119,6 +119,11 @@ public class HikariDatabase extends Database {
 
   @Override
   public String getRankAndName(String player) {
+    String cached = RoleCache.get(player);
+    if (cached != null) {
+      return cached;
+    }
+
     try (CachedRowSet rs = query("SELECT `name`, `role` FROM `mCoreProfile` WHERE LOWER(`name`) = ?", player.toLowerCase(Locale.ROOT))) {
       if (rs != null) {
         String result = rs.getString("role") + " : " + rs.getString("name");
@@ -446,6 +451,9 @@ public class HikariDatabase extends Database {
           LOGGER.log(Level.WARNING, "Could not reset auto-commit on a pooled connection.", resetError);
         }
       }
+    }
+    if (snapshot.stream().anyMatch(table -> "mCoreProfile".equals(table.name))) {
+      RoleCache.invalidate(name);
     }
   }
 
