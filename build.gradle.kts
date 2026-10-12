@@ -69,6 +69,7 @@ tasks.shadowJar {
     // Isolate the embedded API package from other plugins using the same library.
     // Bukkit API classes (including org.bukkit.inventory.Inventory) must not be relocated.
     relocate("com.henryfabio.minecraft.inventoryapi", "tk.slicecollections.maxteer.shaded.inventoryapi")
+    relocate("org.jetbrains.annotations", "tk.slicecollections.maxteer.shaded.annotations")
 }
 
 tasks.assemble {
