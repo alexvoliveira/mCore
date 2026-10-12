@@ -3,7 +3,6 @@ package tk.slicecollections.maxteer.cmd;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import tk.slicecollections.maxteer.Core;
-import tk.slicecollections.maxteer.utils.SliceUpdater;
 
 /**
  * @author Maxter
@@ -24,27 +23,20 @@ public class CoreCommand extends Commands {
       }
 
       if (args.length == 0) {
-        player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Instruções para migração segura do banco.\n ");
+        player.sendMessage(" \n§3/mc atualizar §f- §7Instruções para atualização manual do mCore.\n§3/mc converter §f- §7Instruções para migração segura do banco.\n ");
         return;
       }
 
       String action = args[0];
       if (action.equalsIgnoreCase("atualizar")) {
-        SliceUpdater updater = SliceUpdater.UPDATER;
-        if (updater == null || !updater.checkCompleted) {
-          player.sendMessage("§7A verificação de versão ainda não foi concluída. Consulte os logs e tente novamente.");
-        } else if (updater.checkFailed) {
-          player.sendMessage("§cNão foi possível verificar a versão. Não instale JARs cuja autenticidade não tenha sido confirmada.");
-        } else if (!updater.updateAvailable) {
-          player.sendMessage("§aO plugin já se encontra em sua última versão.");
-        } else {
-          updater.downloadUpdate(player);
-        }
+        player.sendMessage("§eA consulta automática de versões foi removida.");
+        player.sendMessage("§7Use somente o JAR publicado nos canais oficiais do projeto.");
+        player.sendMessage("§7Substitua o arquivo manualmente e reinicie o servidor.");
       } else if (action.equalsIgnoreCase("converter")) {
         player.sendMessage("§cA conversão online foi removida para evitar migração insegura.");
         player.sendMessage("§7Use o procedimento offline em docs/DATA-MIGRATION.md e valide o relatório antes de ativar o banco migrado.");
       } else {
-        player.sendMessage(" \n§3/mc atualizar §f- §7Atualizar o mCore.\n§3/mc converter §f- §7Instruções para migração segura do banco.\n ");
+        player.sendMessage(" \n§3/mc atualizar §f- §7Instruções para atualização manual do mCore.\n§3/mc converter §f- §7Instruções para migração segura do banco.\n ");
       }
     } else {
       sender.sendMessage("§cApenas jogadores podem utilizar este comando.");

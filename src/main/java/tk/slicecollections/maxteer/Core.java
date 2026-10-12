@@ -35,7 +35,6 @@ import tk.slicecollections.maxteer.queue.Queue;
 import tk.slicecollections.maxteer.queue.QueuePlayer;
 import tk.slicecollections.maxteer.servers.ServerItem;
 import tk.slicecollections.maxteer.titles.Title;
-import tk.slicecollections.maxteer.utils.SliceUpdater;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -161,8 +160,6 @@ public class Core extends MPlugin {
     getServer().getMessenger().registerOutgoingPluginChannel(this, "mCore");
     getServer().getMessenger().registerIncomingPluginChannel(this, "mCore", new PluginMessageListener());
 
-    Bukkit.getScheduler().runTaskAsynchronously(this, () -> new SliceUpdater(this, 4).run());
-
     validInit = true;
     this.getLogger().info("O plugin foi ativado.");
   }
@@ -192,7 +189,6 @@ public class Core extends MPlugin {
       }
     }
     validInit = false;
-    // Atualização automática de JAR desativada até existir verificação de autenticidade do artefato.
     this.getLogger().info("O plugin foi desativado.");
   }
 
