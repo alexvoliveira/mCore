@@ -42,6 +42,10 @@ public class RoleCache {
     }
   }
 
+  public static void clear() {
+    CACHE.clear();
+  }
+
   public static TimerTask clearCache() {
     return new TimerTask() {
       @Override

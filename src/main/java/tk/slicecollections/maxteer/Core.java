@@ -1,6 +1,7 @@
 package tk.slicecollections.maxteer;
 
 import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketListener;
 import com.henryfabio.minecraft.inventoryapi.manager.InventoryManager;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.PlaceholderAPIPlugin;
@@ -12,6 +13,7 @@ import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.entity.Player;
 import tk.slicecollections.maxteer.achievements.Achievement;
 import tk.slicecollections.maxteer.booster.Booster;
+import tk.slicecollections.maxteer.bukkit.BukkitPartyManager;
 import tk.slicecollections.maxteer.cmd.Commands;
 import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.deliveries.Delivery;
@@ -35,6 +37,7 @@ import tk.slicecollections.maxteer.queue.Queue;
 import tk.slicecollections.maxteer.queue.QueuePlayer;
 import tk.slicecollections.maxteer.servers.ServerItem;
 import tk.slicecollections.maxteer.titles.Title;
+import tk.slicecollections.maxteer.titles.TitleManager;
 
 import java.io.*;
 import java.lang.reflect.Field;
@@ -52,6 +55,9 @@ import java.util.logging.Level;
 public class Core extends MPlugin {
 
   private static Core instance;
+  private final List<PacketListener> registeredPacketListeners = new ArrayList<>();
+  private org.bukkit.scheduler.BukkitTask profileCleanupTask;
+  private MCoreExpansion expansion;
   public static boolean validInit;
   public static final List<String> warnings = new ArrayList<>();
   public static final List<String> minigames = Arrays.asList("Sky Wars", "The Bridge", "Murder");
@@ -125,7 +131,8 @@ public class Core extends MPlugin {
       return;
     }
 
-    PlaceholderAPI.registerExpansion(new MCoreExpansion());
+    this.expansion = new MCoreExpansion();
+    PlaceholderAPI.registerExpansion(this.expansion);
 
     InventoryManager.enable(this);
     Bukkit.getPluginManager().registerEvents(new InventoryMenuListener(), this);
@@ -137,6 +144,8 @@ public class Core extends MPlugin {
       getConfig().getString("database.mysql.usuario"),
       getConfig().getString("database.mysql.senha")
     );
+    this.profileCleanupTask = Bukkit.getScheduler().runTaskTimer(this,
+      Profile::cleanupStalePreloadedProfiles, 1200L, 1200L);
 
     NPCLibrary.setupNPCs(this);
     HologramLibrary.setupHolograms(this);
@@ -152,9 +161,9 @@ public class Core extends MPlugin {
     Commands.setupCommands();
     Listeners.setupListeners();
 
-    ProtocolLibrary.getProtocolManager().addPacketListener(new FakeAdapter());
-    ProtocolLibrary.getProtocolManager().addPacketListener(new NPCAdapter());
-    ProtocolLibrary.getProtocolManager().addPacketListener(new HologramAdapter());
+    this.registerPacketListener(new FakeAdapter());
+    this.registerPacketListener(new NPCAdapter());
+    this.registerPacketListener(new HologramAdapter());
 
     getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
     getServer().getMessenger().registerOutgoingPluginChannel(this, "mCore");
@@ -164,8 +173,39 @@ public class Core extends MPlugin {
     this.getLogger().info("O plugin foi ativado.");
   }
 
+  private void registerPacketListener(PacketListener listener) {
+    ProtocolLibrary.getProtocolManager().addPacketListener(listener);
+    this.registeredPacketListeners.add(listener);
+  }
+
   @Override
   public void disable() {
+    if (this.profileCleanupTask != null) {
+      this.profileCleanupTask.cancel();
+      this.profileCleanupTask = null;
+    }
+
+    for (PacketListener listener : new ArrayList<>(this.registeredPacketListeners)) {
+      try {
+        ProtocolLibrary.getProtocolManager().removePacketListener(listener);
+      } catch (RuntimeException ex) {
+        this.getLogger().log(Level.WARNING, "Could not unregister an mCore packet listener.", ex);
+      }
+    }
+    this.registeredPacketListeners.clear();
+
+    if (this.expansion != null) {
+      this.expansion.unregister();
+      this.expansion = null;
+    }
+
+    Queue.shutdownAll();
+    BukkitPartyManager.shutdown();
+    TitleManager.shutdown();
+    Listeners.shutdown();
+    NPCLibrary.unregisterAll();
+    HologramLibrary.unregisterAll();
+
     if (validInit) {
       Bukkit.getOnlinePlayers().forEach(player -> {
         Profile profile = Profile.unloadProfile(player.getName());
@@ -180,6 +220,21 @@ public class Core extends MPlugin {
       });
     }
 
+    for (Profile profile : new ArrayList<>(Profile.listProfiles())) {
+      String name = profile.getName();
+      if (name != null) {
+        Profile.unloadProfile(name);
+        if (!profile.saveSyncChecked()) {
+          this.getLogger().severe("Synchronous save failed for retained profile during shutdown: " + name);
+        }
+      }
+      profile.destroy();
+    }
+
+    FakeManager.fakeNames.clear();
+    FakeManager.fakeRoles.clear();
+    FakeManager.fakeSkins.clear();
+
     Database database = Database.getInstance();
     if (database != null) {
       try {
@@ -188,8 +243,10 @@ public class Core extends MPlugin {
         this.getLogger().log(Level.SEVERE, "Failed to close the database during plugin shutdown.", ex);
       }
     }
+    Role.listRoles().clear();
     validInit = false;
     this.getLogger().info("O plugin foi desativado.");
+    instance = null;
   }
 
   private void setupRoles() {

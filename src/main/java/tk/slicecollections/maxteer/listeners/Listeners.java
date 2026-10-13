@@ -53,6 +53,11 @@ public class Listeners implements Listener {
     Bukkit.getPluginManager().registerEvents(new Listeners(), Core.getInstance());
   }
 
+  public static void shutdown() {
+    DELAY_PLAYERS.clear();
+    PROTECTION_LOBBY.clear();
+  }
+
   @EventHandler(priority = EventPriority.MONITOR)
   public void onAsyncPlayerPreLogin(AsyncPlayerPreLoginEvent evt) {
     if (evt.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED) {
@@ -66,6 +71,11 @@ public class Listeners implements Listener {
 
   @EventHandler(priority = EventPriority.MONITOR)
   public void onPlayerLoginMonitor(PlayerLoginEvent evt) {
+    if (evt.getResult() != PlayerLoginEvent.Result.ALLOWED) {
+      Profile.discardPreloadedProfile(evt.getPlayer().getName());
+      return;
+    }
+
     Profile profile = Profile.getProfile(evt.getPlayer().getName());
     if (profile == null) {
       evt.disallow(PlayerLoginEvent.Result.KICK_OTHER,

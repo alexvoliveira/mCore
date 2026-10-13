@@ -23,9 +23,11 @@ public class DataContainer {
 
   public synchronized void gc() {
     this.value = null;
-    this.containerMap.values().forEach(AbstractContainer::gc);
-    this.containerMap.clear();
-    this.containerMap = null;
+    if (this.containerMap != null) {
+      this.containerMap.values().forEach(AbstractContainer::gc);
+      this.containerMap.clear();
+      this.containerMap = null;
+    }
   }
 
   public synchronized void set(Object value) {

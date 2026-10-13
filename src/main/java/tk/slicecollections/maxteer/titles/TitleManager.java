@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.player.Profile;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -136,5 +137,12 @@ public class TitleManager {
 
   public static void deselect(Profile profile) {
     TITLE_MANAGER.onDeselectTitle(profile);
+  }
+
+  public static void shutdown() {
+    for (TitleController controller : new ArrayList<>(TITLE_MANAGER.controllers.values())) {
+      controller.destroy();
+    }
+    TITLE_MANAGER.controllers.clear();
   }
 }

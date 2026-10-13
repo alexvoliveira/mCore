@@ -45,4 +45,15 @@ public class BukkitPartyManager {
   public static List<BukkitParty> listParties() {
     return BUKKIT_PARTIES;
   }
+
+  public static void shutdown() {
+    if (CLEAN_PARTIES != null) {
+      CLEAN_PARTIES.cancel();
+      CLEAN_PARTIES = null;
+    }
+    for (BukkitParty party : new ArrayList<>(BUKKIT_PARTIES)) {
+      party.destroy();
+    }
+    BUKKIT_PARTIES.clear();
+  }
 }

@@ -47,10 +47,22 @@ public class NPCListeners implements Listener {
   @EventHandler(priority = EventPriority.MONITOR)
   public void onPluginDisable(PluginDisableEvent evt) {
     if (plugin.equals(evt.getPlugin())) {
-      this.updateTracker.reset();
-      this.antiSpam.clear();
       NPCLibrary.unregisterAll();
     }
+  }
+
+  void removeNPC(NPC npc) {
+    this.toRespawn.values().removeIf(candidate -> candidate == npc);
+  }
+
+  void shutdown() {
+    if (this.updateTracker != null) {
+      this.updateTracker.clear();
+      this.updateTracker = null;
+    }
+    this.antiSpam.clear();
+    this.toRespawn.clear();
+    this.plugin = null;
   }
 
   @EventHandler(priority = EventPriority.MONITOR)

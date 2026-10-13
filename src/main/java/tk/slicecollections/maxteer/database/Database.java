@@ -92,6 +92,8 @@ public abstract class Database {
       cacheTimer.cancel();
       cacheTimer = null;
     }
+    RoleCache.clear();
+    instance = null;
   }
 
   public static Database getInstance() {

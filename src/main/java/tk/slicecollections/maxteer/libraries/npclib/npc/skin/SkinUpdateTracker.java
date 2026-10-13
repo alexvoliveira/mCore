@@ -130,6 +130,10 @@ public class SkinUpdateTracker {
     playerTrackers.remove(playerId);
   }
 
+  public void clear() {
+    this.playerTrackers.clear();
+  }
+
   public void reset() {
     for (Player player : Bukkit.getOnlinePlayers()) {
       if (NPCLibrary.isNPC(player)) {

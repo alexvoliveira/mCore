@@ -9,6 +9,7 @@ import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.YamlConfiguration;
 import tk.slicecollections.maxteer.bungee.cmd.Commands;
 import tk.slicecollections.maxteer.bungee.listener.Listeners;
+import tk.slicecollections.maxteer.bungee.party.BungeePartyManager;
 import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.player.role.Role;
 import tk.slicecollections.maxteer.utils.StringUtils;
@@ -53,10 +54,18 @@ public class Bungee extends Plugin {
 
   @Override
   public void onDisable() {
+    BungeePartyManager.shutdown();
+    Bungee.fakeNames.clear();
+    Bungee.fakeRoles.clear();
+    Bungee.fakeSkins.clear();
     if (Database.getInstance() != null) {
       Database.getInstance().close();
     }
+    // Complete outstanding DB callbacks before clearing caches they may otherwise repopulate.
+    Listeners.shutdown();
+    Role.listRoles().clear();
     this.getLogger().info("O plugin foi desativado.");
+    instance = null;
   }
 
   private Configuration config;

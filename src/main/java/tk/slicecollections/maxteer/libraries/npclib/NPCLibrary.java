@@ -55,6 +55,9 @@ public class NPCLibrary {
 
   public static void unregister(NPC npc) {
     NPCS.remove(npc);
+    if (LISTENER instanceof NPCListeners) {
+      ((NPCListeners) LISTENER).removeNPC(npc);
+    }
   }
 
   public static void unregisterAll() {
@@ -62,7 +65,13 @@ public class NPCLibrary {
       npc.destroy();
     }
 
-    HandlerList.unregisterAll(LISTENER);
+    if (LISTENER != null) {
+      HandlerList.unregisterAll(LISTENER);
+      if (LISTENER instanceof NPCListeners) {
+        ((NPCListeners) LISTENER).shutdown();
+      }
+      LISTENER = null;
+    }
     NPCS.clear();
     plugin = null;
   }

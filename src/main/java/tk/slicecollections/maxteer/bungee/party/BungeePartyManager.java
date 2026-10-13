@@ -36,4 +36,15 @@ public class BungeePartyManager {
   public static List<BungeeParty> listParties() {
     return BUNGEE_PARTIES;
   }
+
+  public static void shutdown() {
+    if (CLEAN_PARTIES != null) {
+      CLEAN_PARTIES.cancel();
+      CLEAN_PARTIES = null;
+    }
+    for (BungeeParty party : new ArrayList<>(BUNGEE_PARTIES)) {
+      party.destroy();
+    }
+    BUNGEE_PARTIES.clear();
+  }
 }

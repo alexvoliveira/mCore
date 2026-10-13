@@ -25,9 +25,11 @@ public class VirtualTeam {
   }
 
   public void destroy() {
-    if (this.instance.getScoreboard() != null) {
-      this.instance.getScoreboard().resetScores(entry);
-      Team team = instance.getScoreboard().getTeam(name);
+    if (this.instance != null && this.instance.getScoreboard() != null) {
+      if (this.entry != null) {
+        this.instance.getScoreboard().resetScores(this.entry);
+      }
+      Team team = this.name == null ? null : this.instance.getScoreboard().getTeam(this.name);
       if (team != null) {
         team.unregister();
       }

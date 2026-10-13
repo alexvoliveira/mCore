@@ -46,9 +46,19 @@ public class HologramListeners implements Listener {
     }
   }
 
+  void removeHologram(Hologram hologram) {
+    this.toRespawn.values().removeIf(candidate -> candidate == hologram);
+  }
+
+  void shutdown() {
+    this.anticlickSpam.clear();
+    this.toRespawn.clear();
+    this.plugin = null;
+  }
+
   @EventHandler(priority = EventPriority.MONITOR)
   public void onPluginDisable(PluginDisableEvent evt) {
-    if (this.plugin.equals(evt.getPlugin())) {
+    if (this.plugin != null && this.plugin.equals(evt.getPlugin())) {
       HologramLibrary.unregisterAll();
     }
   }

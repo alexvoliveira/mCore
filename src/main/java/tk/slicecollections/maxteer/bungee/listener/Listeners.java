@@ -240,6 +240,14 @@ public class Listeners implements Listener {
     return true;
   }
 
+  public static void shutdown() {
+    PROPERTY_BACKUP.clear();
+    PROTECTION_LOBBY.clear();
+    TELL_CACHE.clear();
+    PROTECTION_CACHE.clear();
+    PREFERENCE_LOOKUPS.clear();
+  }
+
   private void loadPreferenceCache(String name, String preference, Map<String, Boolean> cache) {
     String normalizedName = name.toLowerCase(Locale.ROOT);
     String lookupKey = preference + ":" + normalizedName;

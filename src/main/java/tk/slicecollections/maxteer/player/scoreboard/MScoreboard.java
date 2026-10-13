@@ -173,18 +173,40 @@ public abstract class MScoreboard {
   }
 
   public void destroy() {
-    this.objective.unregister();
-    this.objective = null;
-    if (this.health) {
-      this.scoreboard.getObjective("healthBN").unregister();
+    if (this.teams != null) {
+      for (VirtualTeam team : this.teams) {
+        if (team != null) {
+          team.destroy();
+        }
+      }
     }
-    if (this.healthTab) {
-      this.scoreboard.getObjective("healthPL").unregister();
+
+    if (this.objective != null) {
+      this.objective.unregister();
+      this.objective = null;
+    }
+    if (this.scoreboard != null) {
+      if (this.health) {
+        Objective healthObjective = this.scoreboard.getObjective("healthBN");
+        if (healthObjective != null) {
+          healthObjective.unregister();
+        }
+      }
+      if (this.healthTab) {
+        Objective tabObjective = this.scoreboard.getObjective("healthPL");
+        if (tabObjective != null) {
+          tabObjective.unregister();
+        }
+      }
+      if (this.player != null && this.player.isOnline() && this.player.getScoreboard() == this.scoreboard) {
+        this.player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+      }
     }
     this.scoreboard = null;
     this.teams = null;
     this.player = null;
     this.display = null;
+    this.scroller = null;
   }
 
   public VirtualTeam getTeam(int line) {

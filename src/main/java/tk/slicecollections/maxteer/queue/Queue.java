@@ -127,6 +127,22 @@ public class Queue {
     return this.players.stream().filter(qp -> qp.player != null && qp.player.equals(player)).findFirst().orElse(null);
   }
 
+  public void shutdown() {
+    if (this.task != null) {
+      this.task.cancel();
+      this.task = null;
+    }
+    for (QueuePlayer queued : new ArrayList<>(this.players)) {
+      queued.destroy();
+    }
+    this.players.clear();
+  }
+
+  public static void shutdownAll() {
+    VIP.shutdown();
+    MEMBER.shutdown();
+  }
+
   public static final Queue VIP = new Queue();
   public static final Queue MEMBER = new Queue();
 }

@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.Plugin;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.libraries.holograms.api.Hologram;
@@ -24,6 +25,7 @@ public class HologramLibrary {
   public static final MLogger LOGGER = ((MLogger) Core.getInstance().getLogger()).getModule("HOLOGRAMS");
 
   private static Plugin plugin;
+  private static HologramListeners listener;
   private static final List<Hologram> holograms = new ArrayList<>();
 
   public static Hologram createHologram(Location location, List<String> lines) {
@@ -45,12 +47,22 @@ public class HologramLibrary {
 
   public static void removeHologram(Hologram hologram) {
     holograms.remove(hologram);
+    if (listener != null) {
+      listener.removeHologram(hologram);
+    }
     hologram.despawn();
   }
 
   public static void unregisterAll() {
-    holograms.forEach(Hologram::despawn);
+    for (Hologram hologram : new ArrayList<>(holograms)) {
+      hologram.despawn();
+    }
     holograms.clear();
+    if (listener != null) {
+      HandlerList.unregisterAll(listener);
+      listener.shutdown();
+      listener = null;
+    }
     plugin = null;
   }
 
@@ -86,7 +98,8 @@ public class HologramLibrary {
     }
 
     plugin = pl;
-    Bukkit.getPluginManager().registerEvents(new HologramListeners(), plugin);
+    listener = new HologramListeners();
+    Bukkit.getPluginManager().registerEvents(listener, plugin);
   }
 
   public static Plugin getPlugin() {

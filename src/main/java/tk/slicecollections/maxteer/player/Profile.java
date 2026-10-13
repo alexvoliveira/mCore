@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 public class Profile {
 
   private String name;
+  private volatile long lastLoginAttemptMillis = System.currentTimeMillis();
 
   private Game<? extends GameTeam> game;
   private Hotbar hotbar;
@@ -207,15 +208,23 @@ public class Profile {
     this.name = null;
     this.game = null;
     this.hotbar = null;
-    this.scoreboard = null;
-    this.lastHit.clear();
-    this.lastHit = null;
-    this.tableMap.values().forEach(containerMap -> {
-      containerMap.values().forEach(DataContainer::gc);
-      containerMap.clear();
-    });
-    this.tableMap.clear();
-    this.tableMap = null;
+    if (this.scoreboard != null) {
+      this.scoreboard.destroy();
+      this.scoreboard = null;
+    }
+    this.player = null;
+    if (this.lastHit != null) {
+      this.lastHit.clear();
+      this.lastHit = null;
+    }
+    if (this.tableMap != null) {
+      this.tableMap.values().forEach(containerMap -> {
+        containerMap.values().forEach(DataContainer::gc);
+        containerMap.clear();
+      });
+      this.tableMap.clear();
+      this.tableMap = null;
+    }
   }
 
   public String getName() {
@@ -230,6 +239,7 @@ public class Profile {
 
   public void setPlayer(Player player) {
     this.player = player;
+    this.lastLoginAttemptMillis = System.currentTimeMillis();
     UUID_CACHE.put(this.name.toLowerCase(Locale.ROOT), player.getUniqueId());
   }
 
@@ -404,13 +414,48 @@ public class Profile {
   private static final SimpleDateFormat COMPARE_SDF = new SimpleDateFormat("yyyy/MM/dd");
 
   public static Profile createOrLoadProfile(String playerName) throws ProfileLoadException {
-    Profile profile = PROFILES.getOrDefault(playerName.toLowerCase(), null);
+    String key = playerName.toLowerCase(Locale.ROOT);
+    Profile profile = PROFILES.get(key);
     if (profile == null) {
-      profile = new Profile(playerName);
-      PROFILES.put(playerName.toLowerCase(), profile);
+      Profile loaded = new Profile(playerName);
+      Profile existing = PROFILES.putIfAbsent(key, loaded);
+      if (existing != null) {
+        loaded.destroy();
+        profile = existing;
+      } else {
+        profile = loaded;
+      }
     }
-
+    profile.lastLoginAttemptMillis = System.currentTimeMillis();
     return profile;
+  }
+
+  /** Discards a profile created for a login that was refused or abandoned before a Player was attached. */
+  public static void discardPreloadedProfile(String playerName) {
+    if (playerName == null) {
+      return;
+    }
+    String key = playerName.toLowerCase(Locale.ROOT);
+    Profile profile = PROFILES.get(key);
+    if (profile != null && profile.player == null && PROFILES.remove(key, profile)) {
+      UUID_CACHE.remove(key);
+      profile.destroy();
+    }
+  }
+
+  /** Periodically removes login preloads that never became an active player session. */
+  public static void cleanupStalePreloadedProfiles() {
+    long now = System.currentTimeMillis();
+    long maxAgeMillis = java.util.concurrent.TimeUnit.MINUTES.toMillis(2);
+    for (Map.Entry<String, Profile> entry : PROFILES.entrySet()) {
+      Profile profile = entry.getValue();
+      boolean disconnected = profile.player == null || !profile.player.isOnline();
+      if (disconnected && now - profile.lastLoginAttemptMillis >= maxAgeMillis
+          && PROFILES.remove(entry.getKey(), profile)) {
+        UUID_CACHE.remove(entry.getKey());
+        profile.destroy();
+      }
+    }
   }
 
   public static Profile loadIfExists(String playerName) throws ProfileLoadException {
@@ -426,21 +471,25 @@ public class Profile {
   }
 
   public static Profile getProfile(String playerName) {
-    return PROFILES.get(playerName.toLowerCase());
+    return playerName == null ? null : PROFILES.get(playerName.toLowerCase(Locale.ROOT));
   }
 
   public static Profile unloadProfile(String playerName) {
-    UUID_CACHE.remove(playerName.toLowerCase());
-    return PROFILES.remove(playerName.toLowerCase());
+    if (playerName == null) {
+      return null;
+    }
+    String key = playerName.toLowerCase(Locale.ROOT);
+    UUID_CACHE.remove(key);
+    return PROFILES.remove(key);
   }
 
   public static Player findCached(String playerName) {
-    UUID uuid = UUID_CACHE.get(playerName.toLowerCase());
+    UUID uuid = UUID_CACHE.get(playerName.toLowerCase(Locale.ROOT));
     return uuid == null ? null : Bukkit.getPlayer(uuid);
   }
 
   public static boolean isOnline(String playerName) {
-    return PROFILES.containsKey(playerName.toLowerCase());
+    return playerName != null && PROFILES.containsKey(playerName.toLowerCase(Locale.ROOT));
   }
 
   public static Collection<Profile> listProfiles() {

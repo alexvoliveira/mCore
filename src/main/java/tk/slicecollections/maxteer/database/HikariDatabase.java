@@ -2,6 +2,7 @@ package tk.slicecollections.maxteer.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import tk.slicecollections.maxteer.Manager;
@@ -15,6 +16,12 @@ import tk.slicecollections.maxteer.utils.StringUtils;
 
 import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
+import java.io.File;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -43,6 +50,7 @@ public class HikariDatabase extends Database {
   private HikariDataSource dataSource;
   private ThreadPoolExecutor executor;
   private final Object saveSubmissionLock = new Object();
+  private final Object pendingSaveLock = new Object();
   private final AtomicLong saveSequence = new AtomicLong();
   private final ConcurrentMap<String, PendingProfileSave> failedProfileSaves = new ConcurrentHashMap<>();
   private final AtomicBoolean retryScheduled = new AtomicBoolean();
@@ -66,6 +74,7 @@ public class HikariDatabase extends Database {
         this.updateOrThrow(table.getInfo().create());
       }
       SchemaMigrator.migrate(this);
+      this.retryPendingSavesFromDisk();
     } catch (SQLException ex) {
       this.executor.shutdownNow();
       this.closeConnection();
@@ -249,7 +258,10 @@ public class HikariDatabase extends Database {
         LOGGER.severe("Database writer did not terminate; retained profile saves could not be retried safely.");
       }
       if (!this.failedProfileSaves.isEmpty()) {
-        LOGGER.severe("Some profile snapshots remain unpersisted at shutdown. Inspect database availability before restarting.");
+        LOGGER.severe("Some profile snapshots remain only in memory because pending-save storage is unavailable.");
+      }
+      if (this.hasPendingSaveFiles()) {
+        LOGGER.severe("Pending profile saves were preserved under plugins/mCore/pending-saves for retry on the next startup.");
       }
       this.closeConnection();
       Database.stopBackgroundTasks();
@@ -460,6 +472,9 @@ public class HikariDatabase extends Database {
   private void acknowledgeSnapshot(List<TableSnapshot> snapshot) {
     for (TableSnapshot table : snapshot) {
       for (PendingValue field : table.values.values()) {
+        if (field.container == null) {
+          continue;
+        }
         synchronized (field.container) {
           if (Objects.equals(field.container.get(), field.value)) {
             field.container.setUpdated(false);
@@ -470,42 +485,66 @@ public class HikariDatabase extends Database {
   }
 
   private void persistProfileSave(PendingProfileSave pending) throws SQLException {
-    try {
-      this.persistSnapshot(pending.name, pending.snapshot);
-      this.acknowledgeSnapshot(pending.snapshot);
-      this.failedProfileSaves.computeIfPresent(pending.key,
-        (key, failed) -> failed.sequence <= pending.sequence ? null : failed);
-    } catch (SQLException ex) {
-      this.retainFailedSave(pending);
-      throw ex;
+    List<TableSnapshot> snapshot = pending.snapshot;
+    long snapshotSequence = pending.sequence;
+    PendingProfileSave retained = this.failedProfileSaves.get(pending.key);
+    if (retained != null) {
+      if (retained.sequence > snapshotSequence) {
+        snapshot = mergeSnapshots(snapshot, retained.snapshot);
+        snapshotSequence = retained.sequence;
+      } else {
+        snapshot = mergeSnapshots(retained.snapshot, snapshot);
+      }
     }
-  }
 
-  private void retainFailedSave(PendingProfileSave pending) {
-    this.failedProfileSaves.compute(pending.key,
-      (key, existing) -> existing == null || existing.sequence <= pending.sequence ? pending : existing);
+    File pendingFile = null;
+    String pendingContent = null;
+    try {
+      pendingFile = this.pendingSaveFile(pending.name);
+      if (pendingFile.isFile()) {
+        pendingContent = new String(Files.readAllBytes(pendingFile.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+        PendingProfileSave onDisk = this.readPendingSave(pendingFile, pendingContent);
+        if (onDisk.sequence > snapshotSequence) {
+          snapshot = mergeSnapshots(snapshot, onDisk.snapshot);
+          snapshotSequence = onDisk.sequence;
+        } else {
+          snapshot = mergeSnapshots(onDisk.snapshot, snapshot);
+        }
+      }
+    } catch (IOException ex) {
+      LOGGER.log(Level.SEVERE, "Could not read a retained profile snapshot; leaving its file untouched.", ex);
+      pendingFile = null;
+      pendingContent = null;
+    }
+
+    this.persistSnapshot(pending.name, snapshot);
+    this.acknowledgeSnapshot(pending.snapshot);
+    if (retained != null) {
+      this.failedProfileSaves.remove(pending.key, retained);
+    }
+    if (pendingFile != null && pendingContent != null) {
+      try {
+        this.deletePendingFileIfUnchanged(pendingFile, pendingContent);
+      } catch (IOException ex) {
+        LOGGER.log(Level.WARNING, "Profile data was saved, but its pending file could not be removed; refreshing the recovery file.", ex);
+        try {
+          this.storePendingSave(new PendingProfileSave(pending.name, pending.key, snapshotSequence, snapshot));
+        } catch (IOException recoveryError) {
+          ex.addSuppressed(recoveryError);
+          LOGGER.log(Level.SEVERE, "Could not refresh the pending profile recovery file.", ex);
+        }
+      }
+    }
   }
 
   /** Called by the role-cache timer; retry work is serialized behind profile writes. */
   public void retryPendingSavesAsync() {
-    if (this.failedProfileSaves.isEmpty() || !this.retryScheduled.compareAndSet(false, true)) {
+    if ((this.failedProfileSaves.isEmpty() && !this.hasPendingSaveFiles())
+        || !this.retryScheduled.compareAndSet(false, true)) {
       return;
     }
 
-    CompletableFuture<Void> retry = this.submitWrite("retry retained profile saves", () -> {
-      for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
-        if (this.failedProfileSaves.get(pending.key) != pending) {
-          continue;
-        }
-        try {
-          this.persistSnapshot(pending.name, pending.snapshot);
-          this.acknowledgeSnapshot(pending.snapshot);
-          this.failedProfileSaves.remove(pending.key, pending);
-        } catch (SQLException ex) {
-          LOGGER.log(Level.FINE, "Profile save remains pending for " + pending.name + ".", ex);
-        }
-      }
-    });
+    CompletableFuture<Void> retry = this.submitWrite("retry retained profile saves", this::retryPendingSaves);
     retry.whenComplete((ignored, failure) -> {
       this.retryScheduled.set(false);
       if (failure != null) {
@@ -514,7 +553,99 @@ public class HikariDatabase extends Database {
     });
   }
 
+  private void retryPendingSaves() {
+    // Spill in-memory fallbacks to disk first so RAM remains bounded during long outages.
+    for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
+      if (this.failedProfileSaves.get(pending.key) != pending) {
+        continue;
+      }
+      try {
+        this.storePendingSave(pending);
+        this.failedProfileSaves.remove(pending.key, pending);
+      } catch (IOException ex) {
+        LOGGER.log(Level.SEVERE, "Could not move pending profile data to disk for " + pending.name + ".", ex);
+      }
+    }
+
+    this.retryPendingSavesFromDisk();
+
+    // If disk is unavailable, retain the in-memory fallback and keep retrying without discarding data.
+    for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
+      if (this.failedProfileSaves.get(pending.key) != pending) {
+        continue;
+      }
+      try {
+        this.persistSnapshot(pending.name, pending.snapshot);
+        this.acknowledgeSnapshot(pending.snapshot);
+        this.failedProfileSaves.remove(pending.key, pending);
+      } catch (SQLException ex) {
+        LOGGER.log(Level.FINE, "Profile save remains pending for " + pending.name + ".", ex);
+      }
+    }
+  }
+
+  private void retryPendingSavesFromDisk() {
+    File directory = new File("plugins/mCore/pending-saves");
+    if (!directory.isDirectory()) {
+      return;
+    }
+    File[] files = directory.listFiles((dir, name) -> name.endsWith(".json"));
+    if (files == null || files.length == 0) {
+      return;
+    }
+    Arrays.sort(files, Comparator.comparing(File::getName));
+    for (File file : files) {
+      String content;
+      PendingProfileSave pending;
+      try {
+        content = new String(Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+        pending = this.readPendingSave(file, content);
+      } catch (Exception ex) {
+        LOGGER.log(Level.SEVERE, "Could not read pending profile save file " + file.getName() + "; preserving it for recovery.", ex);
+        continue;
+      }
+
+      PendingProfileSave inMemory = this.failedProfileSaves.get(pending.key);
+      List<TableSnapshot> snapshot = inMemory == null ? pending.snapshot
+        : inMemory.sequence > pending.sequence
+          ? mergeSnapshots(pending.snapshot, inMemory.snapshot)
+          : mergeSnapshots(inMemory.snapshot, pending.snapshot);
+      try {
+        this.persistSnapshot(pending.name, snapshot);
+        this.acknowledgeSnapshot(snapshot);
+        boolean deleted = this.deletePendingFileIfUnchanged(file, content);
+        if (deleted && inMemory != null) {
+          this.failedProfileSaves.remove(pending.key, inMemory);
+        }
+      } catch (SQLException ex) {
+        LOGGER.log(Level.FINE, "Disk-backed profile save remains pending for " + pending.name + ".", ex);
+      } catch (IOException ex) {
+        LOGGER.log(Level.WARNING, "Could not remove pending profile save file " + file.getName() + "; refreshing recovery data.", ex);
+        long sequence = inMemory == null ? pending.sequence : Math.max(pending.sequence, inMemory.sequence);
+        try {
+          this.storePendingSave(new PendingProfileSave(pending.name, pending.key, sequence, snapshot));
+          if (inMemory != null) {
+            this.failedProfileSaves.remove(pending.key, inMemory);
+          }
+        } catch (IOException recoveryError) {
+          ex.addSuppressed(recoveryError);
+          LOGGER.log(Level.SEVERE, "Could not refresh pending profile recovery data; preserving the in-memory copy.", ex);
+        }
+      }
+    }
+  }
+
   private void retryFailedProfileSavesOnShutdown() {
+    for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
+      try {
+        this.storePendingSave(pending);
+        this.failedProfileSaves.remove(pending.key, pending);
+      } catch (IOException ex) {
+        LOGGER.log(Level.SEVERE, "Could not durably retain profile data for " + pending.name + ".", ex);
+      }
+    }
+
+    this.retryPendingSavesFromDisk();
     for (PendingProfileSave pending : new ArrayList<>(this.failedProfileSaves.values())) {
       try {
         this.persistSnapshot(pending.name, pending.snapshot);
@@ -524,6 +655,231 @@ public class HikariDatabase extends Database {
         LOGGER.log(Level.SEVERE, "Profile data is still not persisted for " + pending.name + ".", ex);
       }
     }
+  }
+
+  private void retainFailedSave(PendingProfileSave pending) {
+    synchronized (this.pendingSaveLock) {
+      PendingProfileSave previous = this.failedProfileSaves.get(pending.key);
+      PendingProfileSave merged = previous == null ? pending
+        : new PendingProfileSave(pending.name, pending.key, Math.max(previous.sequence, pending.sequence),
+          previous.sequence > pending.sequence
+            ? mergeSnapshots(pending.snapshot, previous.snapshot)
+            : mergeSnapshots(previous.snapshot, pending.snapshot));
+      try {
+        this.storePendingSave(merged);
+        this.failedProfileSaves.remove(pending.key);
+      } catch (IOException ex) {
+        LOGGER.log(Level.SEVERE, "Could not write a durable pending profile save for " + pending.name
+          + "; the data will remain in memory while disk storage is unavailable.", ex);
+        this.failedProfileSaves.put(pending.key, merged);
+      }
+    }
+  }
+
+  private File pendingSaveFile(String name) throws IOException {
+    String key = name == null ? "" : name.toLowerCase(Locale.ROOT);
+    if (!key.matches("[a-z0-9_]{1,32}")) {
+      throw new IOException("Invalid player key for pending profile save.");
+    }
+    File directory = new File("plugins/mCore/pending-saves");
+    if (!directory.isDirectory() && !directory.mkdirs() && !directory.isDirectory()) {
+      throw new IOException("Could not create pending profile save directory: " + directory.getAbsolutePath());
+    }
+    return new File(directory, key + ".json");
+  }
+
+  private boolean hasPendingSaveFiles() {
+    File directory = new File("plugins/mCore/pending-saves");
+    if (!directory.isDirectory()) {
+      return false;
+    }
+    File[] files = directory.listFiles((dir, name) -> name.endsWith(".json"));
+    return files == null || files.length > 0;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void storePendingSave(PendingProfileSave pending) throws IOException {
+    synchronized (this.pendingSaveLock) {
+      File file = this.pendingSaveFile(pending.name);
+      List<TableSnapshot> snapshot = pending.snapshot;
+      long sequence = pending.sequence;
+      if (file.isFile()) {
+        String existingContent = new String(Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+        PendingProfileSave existing = this.readPendingSave(file, existingContent);
+        if (existing.sequence > pending.sequence) {
+          snapshot = mergeSnapshots(snapshot, existing.snapshot);
+          sequence = existing.sequence;
+        } else {
+          snapshot = mergeSnapshots(existing.snapshot, snapshot);
+          sequence = Math.max(existing.sequence, pending.sequence);
+        }
+      }
+
+      JSONObject root = new JSONObject();
+      root.put("version", 2L);
+      root.put("name", pending.name);
+      root.put("sequence", sequence);
+      JSONArray tables = new JSONArray();
+      for (TableSnapshot table : snapshot) {
+        JSONObject tableJson = new JSONObject();
+        tableJson.put("name", table.name);
+        JSONObject values = new JSONObject();
+        for (Map.Entry<String, PendingValue> entry : table.values.entrySet()) {
+          if (!entry.getKey().matches("[A-Za-z0-9_]+")) {
+            throw new IOException("Invalid column name in pending profile save.");
+          }
+          values.put(entry.getKey(), entry.getValue().value);
+        }
+        tableJson.put("values", values);
+        tables.add(tableJson);
+      }
+      root.put("tables", tables);
+      this.writePendingFileAtomically(file, root.toJSONString());
+    }
+  }
+
+  private PendingProfileSave readPendingSave(File file, String content) throws IOException {
+    try {
+      Object parsed = new JSONParser().parse(content);
+      if (!(parsed instanceof JSONObject)) {
+        throw new IOException("Invalid pending profile save document.");
+      }
+      JSONObject root = (JSONObject) parsed;
+      Object version = root.get("version");
+      if (!(version instanceof Number)) {
+        throw new IOException("Unsupported pending profile save version.");
+      }
+      long formatVersion = ((Number) version).longValue();
+      if (formatVersion != 1L && formatVersion != 2L) {
+        throw new IOException("Unsupported pending profile save version.");
+      }
+      Object nameValue = root.get("name");
+      if (!(nameValue instanceof String)) {
+        throw new IOException("Pending profile save has no player name.");
+      }
+      String name = (String) nameValue;
+      String key = name.toLowerCase(Locale.ROOT);
+      if (!key.matches("[a-z0-9_]{1,32}")) {
+        throw new IOException("Invalid player name in pending profile save.");
+      }
+      Object rawTables = root.get("tables");
+      if (!(rawTables instanceof JSONArray)) {
+        throw new IOException("Pending profile save has no tables.");
+      }
+
+      List<TableSnapshot> snapshot = new ArrayList<>();
+      for (Object rawTable : (JSONArray) rawTables) {
+        if (!(rawTable instanceof JSONObject)) {
+          throw new IOException("Invalid table in pending profile save.");
+        }
+        JSONObject tableJson = (JSONObject) rawTable;
+        Object tableNameValue = tableJson.get("name");
+        if (!(tableNameValue instanceof String)) {
+          throw new IOException("Pending profile save has an invalid table name.");
+        }
+        String tableName = (String) tableNameValue;
+        boolean knownTable = DataTable.listTables().stream().anyMatch(table -> table.getInfo().name().equals(tableName));
+        if (!knownTable) {
+          throw new IOException("Unknown table in pending profile save: " + tableName);
+        }
+        Object rawValues = tableJson.get("values");
+        if (!(rawValues instanceof JSONObject)) {
+          throw new IOException("Pending profile save has invalid column values.");
+        }
+        Map<String, PendingValue> values = new LinkedHashMap<>();
+        JSONObject valuesJson = (JSONObject) rawValues;
+        for (Object rawEntry : valuesJson.entrySet()) {
+          Map.Entry<?, ?> entry = (Map.Entry<?, ?>) rawEntry;
+          if (!(entry.getKey() instanceof String) || !((String) entry.getKey()).matches("[A-Za-z0-9_]+")) {
+            throw new IOException("Invalid column in pending profile save.");
+          }
+          Object value = entry.getValue();
+          if (value instanceof JSONObject && ((JSONObject) value).containsKey("type")) {
+            value = this.decodePendingValue((JSONObject) value);
+          } else if (value != null && !(value instanceof String || value instanceof Number || value instanceof Boolean)) {
+            throw new IOException("Unsupported value type in pending profile save.");
+          }
+          values.put((String) entry.getKey(), new PendingValue(null, value));
+        }
+        if (!values.isEmpty()) {
+          snapshot.add(new TableSnapshot(tableName, values));
+        }
+      }
+      Object rawSequence = root.get("sequence");
+      long sequence = rawSequence instanceof Number ? ((Number) rawSequence).longValue() : 0L;
+      this.saveSequence.accumulateAndGet(sequence, Math::max);
+      return new PendingProfileSave(name, key, sequence, snapshot);
+    } catch (IOException ex) {
+      throw ex;
+    } catch (Exception ex) {
+      throw new IOException("Could not parse pending profile save " + file.getName() + ".", ex);
+    }
+  }
+
+  private Object decodePendingValue(JSONObject encoded) throws IOException {
+    Object typeValue = encoded.get("type");
+    Object rawValue = encoded.get("value");
+    if (!(typeValue instanceof String) || !(rawValue instanceof String)) {
+      throw new IOException("Invalid typed value in pending profile save.");
+    }
+    String value = (String) rawValue;
+    switch ((String) typeValue) {
+      case "null": return null;
+      case "string": return value;
+      case "long": return Long.valueOf(value);
+      case "integer": return Integer.valueOf(value);
+      case "short": return Short.valueOf(value);
+      case "byte": return Byte.valueOf(value);
+      case "double": return Double.valueOf(value);
+      case "float": return Float.valueOf(value);
+      case "big-decimal": return new BigDecimal(value);
+      case "big-integer": return new BigInteger(value);
+      case "boolean": return Boolean.valueOf(value);
+      default: throw new IOException("Unsupported typed value in pending profile save: " + typeValue);
+    }
+  }
+
+  private void writePendingFileAtomically(File file, String content) throws IOException {
+    File temporary = File.createTempFile("mcore-pending-", ".tmp", file.getParentFile());
+    try {
+      Files.write(temporary.toPath(), content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      try {
+        Files.move(temporary.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+      } catch (java.nio.file.AtomicMoveNotSupportedException ex) {
+        Files.move(temporary.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      }
+    } finally {
+      Files.deleteIfExists(temporary.toPath());
+    }
+  }
+
+  private boolean deletePendingFileIfUnchanged(File file, String expectedContent) throws IOException {
+    synchronized (this.pendingSaveLock) {
+      if (!file.isFile()) {
+        return true;
+      }
+      String currentContent = new String(Files.readAllBytes(file.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+      if (!currentContent.equals(expectedContent)) {
+        return false;
+      }
+      Files.deleteIfExists(file.toPath());
+      return true;
+    }
+  }
+
+  private static List<TableSnapshot> mergeSnapshots(List<TableSnapshot> older, List<TableSnapshot> newer) {
+    Map<String, Map<String, PendingValue>> merged = new LinkedHashMap<>();
+    for (TableSnapshot table : older) {
+      merged.computeIfAbsent(table.name, ignored -> new LinkedHashMap<>()).putAll(table.values);
+    }
+    for (TableSnapshot table : newer) {
+      merged.computeIfAbsent(table.name, ignored -> new LinkedHashMap<>()).putAll(table.values);
+    }
+    List<TableSnapshot> result = new ArrayList<>();
+    for (Map.Entry<String, Map<String, PendingValue>> table : merged.entrySet()) {
+      result.add(new TableSnapshot(table.getKey(), new LinkedHashMap<>(table.getValue())));
+    }
+    return result;
   }
 
   private static final class PendingProfileSave {
