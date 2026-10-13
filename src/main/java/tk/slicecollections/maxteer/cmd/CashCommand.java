@@ -22,7 +22,7 @@ public class CashCommand extends Commands {
   public void perform(CommandSender sender, String label, String[] args) {
     if (args.length == 0) {
       if (sender instanceof Player) {
-        sender.sendMessage(MessageUtils.info("Saldo de CASH: §a§l" + StringUtils.formatNumber(CashManager.getCash(sender.getName()))));
+        sender.sendMessage(MessageUtils.info("§a§lSALDO DE CASH §7" + StringUtils.formatNumber(CashManager.getCash(sender.getName()))));
         return;
       }
 
@@ -31,7 +31,7 @@ public class CashCommand extends Commands {
     }
 
     if (!sender.hasPermission("mcore.cmd.cash")) {
-      sender.sendMessage(MessageUtils.info("Saldo de CASH: §a§l" + StringUtils.formatNumber(CashManager.getCash(sender.getName()))));
+      sender.sendMessage(MessageUtils.info("§a§lSALDO DE CASH §7" + StringUtils.formatNumber(CashManager.getCash(sender.getName()))));
       return;
     }
 

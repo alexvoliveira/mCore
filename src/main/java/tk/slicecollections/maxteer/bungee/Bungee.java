@@ -52,7 +52,7 @@ public class Bungee extends Plugin {
 
     getProxy().registerChannel("mCore");
 
-    this.getLogger().info("[mCore] ➜ INICIADO com sucesso.");
+    this.getLogger().info("[MCORE] ➜ INICIADO com sucesso.");
   }
 
   @Override
@@ -67,7 +67,7 @@ public class Bungee extends Plugin {
     // Complete outstanding DB callbacks before clearing caches they may otherwise repopulate.
     Listeners.shutdown();
     Role.listRoles().clear();
-    this.getLogger().info("[mCore] ➜ DESLIGADO com segurança.");
+    this.getLogger().info("[MCORE] ➜ DESLIGADO com segurança.");
     instance = null;
   }
 
@@ -92,7 +92,7 @@ public class Bungee extends Plugin {
           this.roles = YamlConfiguration.getProvider(YamlConfiguration.class).load(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         }
       } catch (IOException ex) {
-        this.getLogger().log(Level.WARNING, "[mCore] ➜ FALHA AO CARREGAR a configuração " + fileName + ".yml.", ex);
+        this.getLogger().log(Level.WARNING, "[MCORE] ➜ FALHA AO CARREGAR a configuração " + fileName + ".yml.", ex);
       }
     }
   }
@@ -225,7 +225,7 @@ public class Bungee extends Plugin {
         ou.write(buff, 0, len);
       }
     } catch (IOException ex) {
-      getInstance().getLogger().log(Level.WARNING, "[mCore] ➜ FALHA AO COPIAR o arquivo " + out.getName() + ".", ex);
+      getInstance().getLogger().log(Level.WARNING, "[MCORE] ➜ FALHA AO COPIAR o arquivo " + out.getName() + ".", ex);
     } finally {
       try {
         if (ou != null) {

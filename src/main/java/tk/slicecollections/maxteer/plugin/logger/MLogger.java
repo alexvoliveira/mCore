@@ -67,9 +67,9 @@ public class MLogger extends PluginLogger {
   }
 
   private enum MLevel {
-    INFO("§a"),
-    WARNING("§e"),
-    SEVERE("§c");
+    INFO("§7"),
+    WARNING("§c"),
+    SEVERE("§4");
 
     private String color;
 
