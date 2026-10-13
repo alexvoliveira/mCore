@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.plugin.config;
 
+import lombok.Getter;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -20,8 +22,10 @@ import tk.slicecollections.maxteer.plugin.MPlugin;
 public class MConfig {
 
   private MPlugin plugin;
+  @Getter
   private File file;
-  private YamlConfiguration config;
+  @Getter
+  private YamlConfiguration rawConfig;
 
   private MConfig(MPlugin plugin, String path, String name) {
     this.plugin = plugin;
@@ -41,77 +45,77 @@ public class MConfig {
     }
 
     try {
-      this.config = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao criar a config \"" + file.getName() + "\": ", ex);
     }
   }
 
   public boolean createSection(String path) {
-    this.config.createSection(path);
+    this.rawConfig.createSection(path);
     return save();
   }
 
   public boolean set(String path, Object obj) {
-    this.config.set(path, obj);
+    this.rawConfig.set(path, obj);
     return save();
   }
 
   public boolean contains(String path) {
-    return this.config.contains(path);
+    return this.rawConfig.contains(path);
   }
 
   public Object get(String path) {
-    return this.config.get(path);
+    return this.rawConfig.get(path);
   }
 
   public int getInt(String path) {
-    return this.config.getInt(path);
+    return this.rawConfig.getInt(path);
   }
 
   public int getInt(String path, int def) {
-    return this.config.getInt(path, def);
+    return this.rawConfig.getInt(path, def);
   }
 
   public double getDouble(String path) {
-    return this.config.getDouble(path);
+    return this.rawConfig.getDouble(path);
   }
 
   public double getDouble(String path, double def) {
-    return this.config.getDouble(path, def);
+    return this.rawConfig.getDouble(path, def);
   }
 
   public String getString(String path) {
-    return this.config.getString(path);
+    return this.rawConfig.getString(path);
   }
 
   public boolean getBoolean(String path) {
-    return this.config.getBoolean(path);
+    return this.rawConfig.getBoolean(path);
   }
   
   public boolean getBoolean(String path, boolean def) {
-    return this.config.getBoolean(path, def);
+    return this.rawConfig.getBoolean(path, def);
   }
 
   public List<String> getStringList(String path) {
-    return this.config.getStringList(path);
+    return this.rawConfig.getStringList(path);
   }
   
   public List<Integer> getIntegerList(String path) {
-    return this.config.getIntegerList(path);
+    return this.rawConfig.getIntegerList(path);
   }
 
   public Set<String> getKeys(boolean flag) {
-    return this.config.getKeys(flag);
+    return this.rawConfig.getKeys(flag);
   }
 
   public ConfigurationSection getSection(String path) {
-    return this.config.getConfigurationSection(path);
+    return this.rawConfig.getConfigurationSection(path);
   }
 
   public void reload() {
     try {
-      this.config = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao recarregar a config \"" + file.getName() + "\": ", ex);
     }
@@ -119,7 +123,7 @@ public class MConfig {
 
   public boolean save() {
     try {
-      this.config.save(this.file);
+      this.rawConfig.save(this.file);
       return true;
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao salvar a config \"" + file.getName() + "\": ", ex);
@@ -127,13 +131,7 @@ public class MConfig {
     }
   }
 
-  public File getFile() {
-    return this.file;
-  }
 
-  public YamlConfiguration getRawConfig() {
-    return this.config;
-  }
 
   private static Map<String, MConfig> cache = new HashMap<>();
 
