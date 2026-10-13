@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.cmd;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import tk.slicecollections.maxteer.cash.CashException;
@@ -20,29 +22,27 @@ public class CashCommand extends Commands {
   public void perform(CommandSender sender, String label, String[] args) {
     if (args.length == 0) {
       if (sender instanceof Player) {
-        sender.sendMessage("§eCash: §b" + StringUtils.formatNumber(CashManager.getCash(sender.getName())));
+        sender.sendMessage(MessageUtils.info("Saldo de CASH: §a§l" + StringUtils.formatNumber(CashManager.getCash(sender.getName()))));
         return;
       }
 
-      sender.sendMessage(
-        " \n§3/cash set [jogador] [quantia] §f- §7Setar o cash do jogador.\n§3/cash add [jogador] [quantia] §f- §7Dar cash para um jogador.\n§3/cash remove [jogador] [quantia] §f- §7Remover o cash de um jogador.\n ");
+      sender.sendMessage(MessageUtils.info("§a§lAJUDA §7• COMANDOS DE CASH\n§a/cash set [jogador] [quantia] §7➜ Definir o saldo.\n§a/cash add [jogador] [quantia] §7➜ Adicionar saldo.\n§a/cash remove [jogador] [quantia] §7➜ Remover saldo.\n "));
       return;
     }
 
     if (!sender.hasPermission("mcore.cmd.cash")) {
-      sender.sendMessage("§eCash: §b" + StringUtils.formatNumber(CashManager.getCash(sender.getName())));
+      sender.sendMessage(MessageUtils.info("Saldo de CASH: §a§l" + StringUtils.formatNumber(CashManager.getCash(sender.getName()))));
       return;
     }
 
     String action = args[0];
     if (!action.equalsIgnoreCase("set") && !action.equalsIgnoreCase("add") && !action.equalsIgnoreCase("remove")) {
-      sender.sendMessage(
-        " \n§3/cash set [jogador] [quantia] §f- §7Setar o cash do jogador.\n§3/cash add [jogador] [quantia] §f- §7Dar cash para um jogador.\n§3/cash remove [jogador] [quantia] §f- §7Remover o cash de um jogador.\n ");
+      sender.sendMessage(MessageUtils.info("§a§lAJUDA §7• COMANDOS DE CASH\n§a/cash set [jogador] [quantia] §7➜ Definir o saldo.\n§a/cash add [jogador] [quantia] §7➜ Adicionar saldo.\n§a/cash remove [jogador] [quantia] §7➜ Remover saldo.\n "));
       return;
     }
 
     if (args.length <= 2) {
-      sender.sendMessage("§cUtilize /cash " + action + " [jogador] [quantia]");
+      sender.sendMessage(MessageUtils.error("SINTAXE", "Utilize /cash " + action + " [jogador] [quantia]."));
       return;
     }
 
@@ -54,7 +54,7 @@ public class CashCommand extends Commands {
 
       amount = Long.parseLong(args[2]);
     } catch (NumberFormatException ex) {
-      sender.sendMessage("§cUtilize números válidos e positivos.");
+      sender.sendMessage(MessageUtils.error("VALOR INVÁLIDO", "Informe uma quantia numérica e positiva."));
       return;
     }
 
@@ -62,18 +62,18 @@ public class CashCommand extends Commands {
       switch (action.toLowerCase()) {
         case "set":
           CashManager.setCash(args[1], amount);
-          sender.sendMessage("§aVocê setou o Cash do(a) " + Role.getColored(args[1]) + " §apara §b" + StringUtils.formatNumber(amount) + "§a.");
+          sender.sendMessage(MessageUtils.success("CASH ATUALIZADO", "saldo de " + Role.getColored(args[1]) + " definido para §a§l" + StringUtils.formatNumber(amount) + "§7."));
           break;
         case "add":
           CashManager.addCash(args[1], amount);
-          sender.sendMessage("§aVocê adicionou §b" + StringUtils.formatNumber(amount) + " §ade Cash para o(a) " + Role.getColored(args[1]) + "§a.");
+          sender.sendMessage(MessageUtils.success("CASH ADICIONADO", "§a§l" + StringUtils.formatNumber(amount) + " §7adicionado ao saldo de " + Role.getColored(args[1]) + "§7."));
           break;
         case "remove":
           CashManager.removeCash(args[1], amount);
-          sender.sendMessage("§aVocê removeu §b" + StringUtils.formatNumber(amount) + " §ade Cash do(a) " + Role.getColored(args[1]) + "§a.");
+          sender.sendMessage(MessageUtils.success("CASH REMOVIDO", "§a§l" + StringUtils.formatNumber(amount) + " §7removido do saldo de " + Role.getColored(args[1]) + "§7."));
       }
     } catch (CashException ex) {
-      sender.sendMessage("§cO usuário precisa estar conectado.");
+      sender.sendMessage(MessageUtils.error("JOGADOR OFFLINE", "O jogador precisa estar conectado para alterar o CASH."));
     }
   }
 }

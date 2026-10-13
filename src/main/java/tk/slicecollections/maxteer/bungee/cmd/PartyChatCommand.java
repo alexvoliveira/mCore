@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.bungee.cmd;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -20,22 +22,22 @@ public class PartyChatCommand extends Commands {
   @Override
   public void perform(CommandSender sender, String[] args) {
     if (!(sender instanceof ProxiedPlayer)) {
-      sender.sendMessage(TextComponent.fromLegacyText("§cApenas jogadores podem utilizar este comando."));
+      sender.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("COMANDO", "Apenas jogadores podem utilizar este comando.")));
       return;
     }
 
     ProxiedPlayer player = (ProxiedPlayer) sender;
     if (args.length == 0) {
-      player.sendMessage(TextComponent.fromLegacyText("§cUtilize /p [mensagem] para conversar com a sua Party."));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("SINTAXE", "Utilize /p [mensagem] para conversar com a sua Party.")));
       return;
     }
 
     BungeeParty party = BungeePartyManager.getMemberParty(player.getName());
     if (party == null) {
-      player.sendMessage(TextComponent.fromLegacyText("§cVocê não pertence a uma Party."));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("PARTY", "Você não pertence a uma Party.")));
       return;
     }
 
-    party.broadcast("§d[Party] " + Role.getPrefixed(player.getName()) + "§f: " + StringUtils.join(args, " "));
+    party.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(player.getName()) + "§7: " + StringUtils.join(args, " "));
   }
 }

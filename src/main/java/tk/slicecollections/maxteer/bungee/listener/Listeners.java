@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.bungee.listener;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
@@ -84,7 +86,7 @@ public class Listeners implements Listener {
                   ex.addSuppressed(restoreError);
                 }
               }
-              Bungee.getInstance().getLogger().log(Level.WARNING, "Could not apply fake skin to " + player.getName() + ".", ex);
+              Bungee.getInstance().getLogger().log(Level.WARNING, "[mCore] ➜ SKIN NÃO APLICADA: Não foi possível aplicar a skin de " + player.getName() + ".", ex);
             }
           }
         }
@@ -118,7 +120,7 @@ public class Listeners implements Listener {
           this.modifyProperties(profile, skin.split(":"));
         }
       } catch (Exception ex) {
-        Bungee.getInstance().getLogger().log(Level.WARNING, "Could not apply fake skin to " + player.getName() + ".", ex);
+        Bungee.getInstance().getLogger().log(Level.WARNING, "[mCore] ➜ SKIN NÃO APLICADA: Não foi possível aplicar a skin de " + player.getName() + ".", ex);
       }
     }
   }
@@ -141,7 +143,7 @@ public class Listeners implements Listener {
 
           evt.setCancelled(true);
           PROTECTION_LOBBY.put(player.getName().toLowerCase(), System.currentTimeMillis() + 3000);
-          player.sendMessage(TextComponent.fromLegacyText("§aVocê tem certeza? Utilize /lobby novamente para voltar ao lobby."));
+          player.sendMessage(TextComponent.fromLegacyText(MessageUtils.info("Para confirmar sua saída, utilize /lobby novamente.")));
         } else if (COMMAND_MAP.get(ProxyServer.getInstance().getPluginManager()).containsKey("tell") && args.length > 1 && command.equals("tell") && !args[1]
           .equalsIgnoreCase(player.getName())) {
           String recipient = args[1].toLowerCase(Locale.ROOT);
@@ -149,10 +151,10 @@ public class Listeners implements Listener {
           if (canReceive == null) {
             evt.setCancelled(true);
             this.loadPreferenceCache(args[1], "pm", TELL_CACHE);
-            player.sendMessage(TextComponent.fromLegacyText("§7As preferências do destinatário estão sendo verificadas. Tente novamente em instantes."));
+            player.sendMessage(TextComponent.fromLegacyText(MessageUtils.info("As preferências do destinatário estão sendo verificadas. Tente novamente em instantes.")));
           } else if (!canReceive) {
             evt.setCancelled(true);
-            player.sendMessage(TextComponent.fromLegacyText("§cEste usuário desativou as mensagens privadas."));
+            player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("MENSAGENS PRIVADAS", "Este usuário desativou as mensagens privadas.")));
           }
         }
       }

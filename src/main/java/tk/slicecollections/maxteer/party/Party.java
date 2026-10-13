@@ -59,7 +59,7 @@ public abstract class Party {
     String leader = Role.getPrefixed(this.getLeader());
     this.invitesMap.put(Manager.getName(target).toLowerCase(), System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(MINUTES_UNTIL_EXPIRE_INVITE));
     BaseComponent component = new TextComponent("");
-    for (BaseComponent components : TextComponent.fromLegacyText(" \n" + leader + " §aconvidou você para a Party dele!\n§7Você pode ")) {
+    for (BaseComponent components : TextComponent.fromLegacyText("§7[§d§lPARTY§7] ➜ §a§lCONVITE §7de " + leader + "§7: você foi convidado para a Party.\n§7Você pode ")) {
       component.addExtra(components);
     }
     BaseComponent accept = new TextComponent("ACEITAR");
@@ -86,11 +86,11 @@ public abstract class Party {
 
   public void reject(String member) {
     this.invitesMap.remove(member.toLowerCase());
-    this.leader.sendMessage(" \n" + Role.getPrefixed(member) + " §anegou seu convite de Party!\n ");
+    this.leader.sendMessage("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(member) + " §c§lRECUSOU §7seu convite.");
   }
 
   public void join(String member) {
-    this.broadcast(" \n" + Role.getPrefixed(member) + " §aentrou na Party!\n ");
+    this.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(member) + " §a§lENTROU §7na Party.");
     this.members.add(new PartyPlayer(member, MEMBER));
     this.invitesMap.remove(member.toLowerCase());
   }
@@ -107,14 +107,14 @@ public abstract class Party {
     if (leader.equals(member)) {
       this.leader = this.members.get(0);
       this.leader.setRole(LEADER);
-      this.broadcast(" \n" + prefixed + " §ase tornou o novo Líder da Party!\n ");
+      this.broadcast("§7[§d§lPARTY§7] ➜ " + prefixed + " §a§lASSUMIU A LIDERANÇA §7da Party.");
     }
-    this.broadcast(" \n" + prefixed + " §asaiu da Party!\n ");
+    this.broadcast("§7[§d§lPARTY§7] ➜ " + prefixed + " §7§lSAIU §7da Party.");
   }
 
   public void kick(String member) {
     this.members.stream().filter(pp -> pp.getName().equalsIgnoreCase(member)).findFirst().ifPresent(pp -> {
-      pp.sendMessage(" \n" + Role.getPrefixed(this.getLeader()) + " §aexpulsou você da Party!\n ");
+      pp.sendMessage("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(this.getLeader()) + " §c§lEXPULSOU §7você da Party.");
       this.members.removeIf(pap -> pap.equals(pp));
     });
   }

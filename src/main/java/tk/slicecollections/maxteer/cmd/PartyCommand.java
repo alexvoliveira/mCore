@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.cmd;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -26,28 +28,27 @@ public class PartyCommand extends Commands {
   @Override
   public void perform(CommandSender sender, String label, String[] args) {
     if (!(sender instanceof Player)) {
-      sender.sendMessage("§cApenas jogadores podem utilizar este comando.");
+      sender.sendMessage(MessageUtils.error("COMANDO", "Apenas jogadores podem utilizar este comando."));
       return;
     }
 
     Player player = (Player) sender;
     if (label.equalsIgnoreCase("p")) {
       if (args.length == 0) {
-        player.sendMessage("§cUtilize /p [mensagem] para conversar com a sua Party.");
+        player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /p [mensagem] para conversar com a sua Party."));
         return;
       }
 
       BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
       if (party == null) {
-        player.sendMessage("§cVocê não pertence a uma Party.");
+        player.sendMessage(MessageUtils.error("PARTY", "Você não pertence a uma Party."));
         return;
       }
 
-      party.broadcast("§d[Party] " + Role.getPrefixed(player.getName()) + "§f: " + StringUtils.join(args, " "));
+      party.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(player.getName()) + "§7: " + StringUtils.join(args, " "));
     } else {
       if (args.length == 0) {
-        player.sendMessage(
-          " \n§3/p [mensagem] §f- §7Comunicar-se com os membros.\n§3/party abrir §f- §7Tornar a party pública.\n§3/party fechar §f- §7Tornar a party privada.\n§3/party entrar [jogador] §f- §7Entrar em uma party pública.\n§3/party aceitar [jogador] §f- §7Aceitar uma solicitação.\n§3/party ajuda §f- §7Mostrar essa mensagem de ajuda.\n§3/party convidar [jogador] §f- §7Convidar um jogador.\n§3/party deletar §f- §7Deletar a party.\n§3/party expulsar [jogador] §f- §7Expulsar um membro.\n§3/party info §f- §7Informações da sua Party.\n§3/party negar [jogador] §f- §7Negar uma solicitação.\n§3/party sair §f- §7Sair da Party.\n§3/party transferir [jogador] §f- §7Transferir a Party para outro membro.\n ");
+        player.sendMessage(MessageUtils.info("§a§lAJUDA §7• COMANDOS DE PARTY\n§a/p [mensagem] §7➜ Conversar com os membros.\n§a/party abrir §7➜ Tornar a Party pública.\n§a/party fechar §7➜ Tornar a Party privada.\n§a/party entrar [jogador] §7➜ Entrar em uma Party pública.\n§a/party aceitar [jogador] §7➜ Aceitar um convite.\n§a/party convidar [jogador] §7➜ Convidar um jogador.\n§a/party deletar §7➜ Excluir a Party.\n§a/party expulsar [jogador] §7➜ Expulsar um membro.\n§a/party info §7➜ Ver informações da Party.\n§a/party negar [jogador] §7➜ Recusar um convite.\n§a/party sair §7➜ Sair da Party.\n§a/party transferir [jogador] §7➜ Transferir a liderança."));
         return;
       }
 
@@ -55,242 +56,239 @@ public class PartyCommand extends Commands {
       if (action.equalsIgnoreCase("abrir")) {
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você não pertence a uma Party."));
           return;
         }
 
         if (!party.isLeader(player.getName())) {
-          player.sendMessage("§cVocê não é o Líder da Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", "Você não é o Líder da Party."));
           return;
         }
 
         if (party.isOpen()) {
-          player.sendMessage("§cSua party já é pública.");
+          player.sendMessage(MessageUtils.info("A Party já está pública."));
           return;
         }
 
         party.setIsOpen(true);
-        player.sendMessage("§aVocê abriu a party para qualquer jogador.");
+        player.sendMessage(MessageUtils.success("PARTY ABERTA", "Você abriu a party para qualquer jogador."));
       } else if (action.equalsIgnoreCase("fechar")) {
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você não pertence a uma Party."));
           return;
         }
 
         if (!party.isLeader(player.getName())) {
-          player.sendMessage("§cVocê não é o Líder da Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", "Você não é o Líder da Party."));
           return;
         }
 
         if (!party.isOpen()) {
-          player.sendMessage("§cSua party já é privada.");
+          player.sendMessage(MessageUtils.info("A Party já está privada."));
           return;
         }
 
         party.setIsOpen(false);
-        player.sendMessage("§cVocê fechou a party para apenas convidados.");
+        player.sendMessage(MessageUtils.success("PARTY FECHADA", "A Party agora aceita apenas convidados."));
       } else if (action.equalsIgnoreCase("entrar")) {
         if (args.length == 1) {
-          player.sendMessage("§cUtilize /party entrar [jogador]");
+          player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /party entrar [jogador]"));
           return;
         }
 
         String target = args[1];
         if (target.equalsIgnoreCase(player.getName())) {
-          player.sendMessage("§cVocê não pode entrar na party de você mesmo.");
+          player.sendMessage(MessageUtils.error("AÇÃO BLOQUEADA", "Você não pode entrar na party de você mesmo."));
           return;
         }
 
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party != null) {
-          player.sendMessage("§cVocê já pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você já pertence a uma Party."));
           return;
         }
 
         party = BukkitPartyManager.getLeaderParty(target);
         if (party == null) {
-          player.sendMessage("§c" + Manager.getCurrent(target) + " não é um Líder de Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", Manager.getCurrent(target) + " não é um Líder de Party."));
           return;
         }
 
         target = party.getName(target);
         if (!party.isOpen()) {
-          player.sendMessage("§cA Party de " + Manager.getCurrent(target) + " está fechada apenas para convidados.");
+          player.sendMessage(MessageUtils.error("PARTY FECHADA", "A Party de " + Manager.getCurrent(target) + " aceita apenas convidados."));
           return;
         }
 
         if (!party.canJoin()) {
-          player.sendMessage("§cA Party de " + Manager.getCurrent(target) + " está lotada.");
+          player.sendMessage(MessageUtils.error("PARTY LOTADA", "A Party de " + Manager.getCurrent(target) + " atingiu o limite de membros."));
           return;
         }
 
         party.join(player.getName());
-        player.sendMessage(" \n§aVocê entrou na Party de " + Role.getPrefixed(target) + "§a!\n ");
+        player.sendMessage(MessageUtils.success("PARTY", "Você entrou na Party de " + Role.getPrefixed(target) + "§7."));
       } else if (action.equalsIgnoreCase("aceitar")) {
         if (args.length == 1) {
-          player.sendMessage("§cUtilize /party aceitar [jogador]");
+          player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /party aceitar [jogador]"));
           return;
         }
 
         String target = args[1];
         if (target.equalsIgnoreCase(player.getName())) {
-          player.sendMessage("§cVocê não pode aceitar convites de você mesmo.");
+          player.sendMessage(MessageUtils.error("CONVITE", "Você não pode aceitar convites de você mesmo."));
           return;
         }
 
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party != null) {
-          player.sendMessage("§cVocê já pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você já pertence a uma Party."));
           return;
         }
 
         party = BukkitPartyManager.getLeaderParty(target);
         if (party == null) {
-          player.sendMessage("§c" + Manager.getCurrent(target) + " não é um Líder de Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", Manager.getCurrent(target) + " não é um Líder de Party."));
           return;
         }
 
         target = party.getName(target);
         if (!party.isInvited(player.getName())) {
-          player.sendMessage("§c" + Manager.getCurrent(target) + " não convidou você para Party.");
+          player.sendMessage(MessageUtils.error("CONVITE", Manager.getCurrent(target) + " não convidou você para a Party."));
           return;
         }
 
         if (!party.canJoin()) {
-          player.sendMessage("§cA Party de " + Manager.getCurrent(target) + " está lotada.");
+          player.sendMessage(MessageUtils.error("PARTY LOTADA", "A Party de " + Manager.getCurrent(target) + " atingiu o limite de membros."));
           return;
         }
 
         party.join(player.getName());
-        player.sendMessage(" \n§aVocê entrou na Party de " + Role.getPrefixed(target) + "§a!\n ");
+        player.sendMessage(MessageUtils.success("PARTY", "Você entrou na Party de " + Role.getPrefixed(target) + "§7."));
       } else if (action.equalsIgnoreCase("ajuda")) {
-        player.sendMessage(
-          " \n§3/p [mensagem] §f- §7Comunicar-se com os membros.\n§3/party abrir §f- §7Tornar a party pública.\n§3/party fechar §f- §7Tornar a party privada.\n§3/party entrar [jogador] §f- §7Entrar em uma party pública.\n§3/party aceitar [jogador] §f- §7Aceitar uma solicitação.\n§3/party ajuda §f- §7Mostrar essa mensagem de ajuda.\n§3/party convidar [jogador] §f- §7Convidar um jogador.\n§3/party deletar §f- §7Deletar a party.\n§3/party expulsar [jogador] §f- §7Expulsar um membro.\n§3/party info §f- §7Informações da sua Party.\n§3/party negar [jogador] §f- §7Negar uma solicitação.\n§3/party sair §f- §7Sair da Party.\n§3/party transferir [jogador] §f- §7Transferir a Party para outro membro.\n ");
+        player.sendMessage(MessageUtils.info("§a§lAJUDA §7• COMANDOS DE PARTY\n§a/p [mensagem] §7➜ Conversar com os membros.\n§a/party abrir §7➜ Tornar a Party pública.\n§a/party fechar §7➜ Tornar a Party privada.\n§a/party entrar [jogador] §7➜ Entrar em uma Party pública.\n§a/party aceitar [jogador] §7➜ Aceitar um convite.\n§a/party convidar [jogador] §7➜ Convidar um jogador.\n§a/party deletar §7➜ Excluir a Party.\n§a/party expulsar [jogador] §7➜ Expulsar um membro.\n§a/party info §7➜ Ver informações da Party.\n§a/party negar [jogador] §7➜ Recusar um convite.\n§a/party sair §7➜ Sair da Party.\n§a/party transferir [jogador] §7➜ Transferir a liderança."));
       } else if (action.equalsIgnoreCase("deletar")) {
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você não pertence a uma Party."));
           return;
         }
 
         if (!party.isLeader(player.getName())) {
-          player.sendMessage("§cVocê não é o Líder da Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", "Você não é o Líder da Party."));
           return;
         }
 
-        party.broadcast(" \n" + Role.getPrefixed(player.getName()) + " §adeletou a Party!\n ", true);
+        party.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(player.getName()) + " §c§lEXCLUIU §7a Party.", true);
         party.delete();
-        player.sendMessage("§aVocê deletou a Party.");
+        player.sendMessage(MessageUtils.success("PARTY REMOVIDA", "Você deletou a Party."));
       } else if (action.equalsIgnoreCase("expulsar")) {
         if (args.length == 1) {
-          player.sendMessage("§cUtilize /party expulsar [jogador]");
+          player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /party expulsar [jogador]"));
           return;
         }
 
         BukkitParty party = BukkitPartyManager.getLeaderParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não é um Líder de Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", "Você não é um Líder de Party."));
           return;
         }
 
         String target = args[1];
         if (target.equalsIgnoreCase(player.getName())) {
-          player.sendMessage("§cVocê não pode se expulsar.");
+          player.sendMessage(MessageUtils.error("AÇÃO BLOQUEADA", "Você não pode se expulsar."));
           return;
         }
 
         if (!party.isMember(target)) {
-          player.sendMessage("§cEsse jogador não pertence a sua Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Esse jogador não pertence a sua Party."));
           return;
         }
 
         target = party.getName(target);
         party.kick(target);
-        party.broadcast(" \n" + Role.getPrefixed(player.getName()) + " §aexpulsou " + Role.getPrefixed(target) + " §ada Party!\n ");
+        party.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(player.getName()) + " §c§lEXPULSOU §7" + Role.getPrefixed(target) + " §7da Party.");
       } else if (action.equalsIgnoreCase("info")) {
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você não pertence a uma Party."));
           return;
         }
 
         List<String> members =
           party.listMembers().stream().filter(pp -> pp.getRole() != LEADER).map(pp -> (pp.isOnline() ? "§a" : "§c") + pp.getName()).collect(Collectors.toList());
-        player.sendMessage(
-          " \n§6Líder: " + Role.getPrefixed(party.getLeader()) + "\n§6Pública: " + (party.isOpen() ? "§aSim" : "§cNão") + "\n§6Limite de Membros: §f" + party.listMembers()
-            .size() + "/" + party.getSlots() + "\n§6Membros: " + StringUtils.join(members, "§7, ") + "\n ");
+        player.sendMessage(MessageUtils.info("§a§lINFORMAÇÕES DA PARTY\n§7Líder: " + Role.getPrefixed(party.getLeader()) + "\n§7Status: " + (party.isOpen() ? "§aPÚBLICA" : "§cPRIVADA") + "\n§7Membros: §f" + party.listMembers().size() + "/" + party.getSlots() + "\n§7Lista: " + StringUtils.join(members, "§7, ")));
       } else if (action.equalsIgnoreCase("negar")) {
         if (args.length == 1) {
-          player.sendMessage("§cUtilize /party negar [jogador]");
+          player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /party negar [jogador]"));
           return;
         }
 
         String target = args[1];
         if (target.equalsIgnoreCase(player.getName())) {
-          player.sendMessage("§cVocê não pode negar convites de você mesmo.");
+          player.sendMessage(MessageUtils.error("CONVITE", "Você não pode negar convites de você mesmo."));
           return;
         }
 
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party != null) {
-          player.sendMessage("§cVocê já pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você já pertence a uma Party."));
           return;
         }
 
         party = BukkitPartyManager.getLeaderParty(target);
         if (party == null) {
-          player.sendMessage("§c" + Manager.getCurrent(target) + " não é um Líder de Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", Manager.getCurrent(target) + " não é um Líder de Party."));
           return;
         }
 
         target = party.getName(target);
         if (!party.isInvited(player.getName())) {
-          player.sendMessage("§c" + Manager.getCurrent(target) + " não convidou você para Party.");
+          player.sendMessage(MessageUtils.error("CONVITE", Manager.getCurrent(target) + " não convidou você para a Party."));
           return;
         }
 
         party.reject(player.getName());
-        player.sendMessage(" \n§aVocê negou o convite de Party de " + Role.getPrefixed(target) + "§a!\n ");
+        player.sendMessage(MessageUtils.success("CONVITE NEGADO", "Você negou o convite de Party de " + Role.getPrefixed(target) + "§7."));
       } else if (action.equalsIgnoreCase("sair")) {
         BukkitParty party = BukkitPartyManager.getMemberParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Você não pertence a uma Party."));
           return;
         }
 
         party.leave(player.getName());
-        player.sendMessage("§aVocê saiu da Party!");
+        player.sendMessage(MessageUtils.success("PARTY ENCERRADA", "Você saiu da Party!"));
       } else if (action.equalsIgnoreCase("transferir")) {
         if (args.length == 1) {
-          player.sendMessage("§cUtilize /party transferir [jogador]");
+          player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /party transferir [jogador]"));
           return;
         }
 
         BukkitParty party = BukkitPartyManager.getLeaderParty(player.getName());
         if (party == null) {
-          player.sendMessage("§cVocê não é um Líder de Party.");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", "Você não é um Líder de Party."));
           return;
         }
 
         String target = args[1];
         if (target.equalsIgnoreCase(player.getName())) {
-          player.sendMessage("§cVocê não pode transferir a Party para você mesmo.");
+          player.sendMessage(MessageUtils.error("AÇÃO BLOQUEADA", "Você não pode transferir a Party para você mesmo."));
           return;
         }
 
         if (!party.isMember(target)) {
-          player.sendMessage("§cEsse jogador não pertence a sua Party.");
+          player.sendMessage(MessageUtils.error("PARTY", "Esse jogador não pertence a sua Party."));
           return;
         }
 
         target = party.getName(target);
         party.transfer(target);
-        party.broadcast(" \n" + Role.getPrefixed(player.getName()) + " §atransferiu a liderança da Party para " + Role.getPrefixed(target) + "§a!\n ");
+        party.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(player.getName()) + " §a§lTRANSFERIU A LIDERANÇA §7para " + Role.getPrefixed(target) + "§7.");
       } else {
         if (action.equalsIgnoreCase("convidar")) {
           if (args.length == 1) {
-            player.sendMessage("§cUtilize /party convidar [jogador]");
+            player.sendMessage(MessageUtils.error("SINTAXE", "Utilize /party convidar [jogador]"));
             return;
           }
 
@@ -299,13 +297,13 @@ public class PartyCommand extends Commands {
 
         Player target = Bukkit.getPlayerExact(action);
         if (target == null) {
-          player.sendMessage("§cUsuário não encontrado.");
+          player.sendMessage(MessageUtils.error("JOGADOR NÃO ENCONTRADO", "Usuário não encontrado."));
           return;
         }
 
         action = target.getName();
         if (action.equalsIgnoreCase(player.getName())) {
-          player.sendMessage("§cVocê não pode enviar convites para você mesmo.");
+          player.sendMessage(MessageUtils.error("CONVITE", "Você não pode enviar convites para você mesmo."));
           return;
         }
 
@@ -315,27 +313,27 @@ public class PartyCommand extends Commands {
         }
 
         if (!party.isLeader(player.getName())) {
-          player.sendMessage("§cApenas o Líder da Party pode enviar convites!");
+          player.sendMessage(MessageUtils.error("LIDERANÇA", "Apenas o Líder da Party pode enviar convites!"));
           return;
         }
 
         if (!party.canJoin()) {
-          player.sendMessage("§cA sua Party está lotada.");
+          player.sendMessage(MessageUtils.error("PARTY", "A sua Party está lotada."));
           return;
         }
 
         if (party.isInvited(action)) {
-          player.sendMessage("§cVocê já enviou um convite para " + Manager.getCurrent(action) + ".");
+          player.sendMessage(MessageUtils.error("CONVITE", "Você já enviou um convite para " + Manager.getCurrent(action) + "."));
           return;
         }
 
         if (BukkitPartyManager.getMemberParty(action) != null) {
-          player.sendMessage("§c" + Manager.getCurrent(action) + " já pertence a uma Party.");
+          player.sendMessage(MessageUtils.error("PARTY", Manager.getCurrent(action) + " já pertence a uma Party."));
           return;
         }
 
         party.invite(target);
-        player.sendMessage(" \n" + Role.getPrefixed(action) + " §afoi convidado para a Party. Ele tem 60 segundos para aceitar ou negar esta solicitação.\n ");
+        player.sendMessage(MessageUtils.success("CONVITE ENVIADO", Role.getPrefixed(action) + " foi convidado para a Party. O convite expira em 60 segundos."));
       }
     }
   }

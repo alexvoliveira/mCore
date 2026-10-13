@@ -20,14 +20,14 @@ public class MLogger extends PluginLogger {
   public MLogger(Plugin plugin) {
     super(plugin);
     this.plugin = plugin;
-    this.prefix = "[" + plugin.getName() + "] ";
+    this.prefix = "§7[§a§l" + plugin.getName().toUpperCase(java.util.Locale.ROOT) + "§7] §7➜ ";
     this.sender = Bukkit.getConsoleSender();
   }
 
   public MLogger(MLogger parent, String prefix) {
     super(parent.plugin);
     this.plugin = parent.plugin;
-    this.prefix = parent.prefix + prefix;
+    this.prefix = "§7[§a§l" + parent.plugin.getName().toUpperCase(java.util.Locale.ROOT) + "§7] §7[§a§l" + prefix.replace(": ", "").toUpperCase(java.util.Locale.ROOT) + "§7] §7➜ ";
     this.sender = Bukkit.getConsoleSender();
   }
 
@@ -51,7 +51,7 @@ public class MLogger extends PluginLogger {
     if (message.equals("Default system encoding may have misread config.yml from plugin jar")) {
       return;
     }
-    StringBuilder result = new StringBuilder(this.prefix + message);
+    StringBuilder result = new StringBuilder(this.prefix).append(level.color).append(message);
     if (logRecord.getThrown() != null) {
       result.append("\n").append(logRecord.getThrown().getLocalizedMessage());
       for (StackTraceElement ste : logRecord.getThrown().getStackTrace()) {
@@ -59,11 +59,11 @@ public class MLogger extends PluginLogger {
       }
     }
 
-    this.sender.sendMessage(level.format(result.toString()));
+    this.sender.sendMessage(result.toString());
   }
 
   public MLogger getModule(String module) {
-    return new MLogger(this, module + ": ");
+    return new MLogger(this, module);
   }
 
   private enum MLevel {
@@ -75,10 +75,6 @@ public class MLogger extends PluginLogger {
 
     MLevel(String color) {
       this.color = color;
-    }
-
-    public String format(String message) {
-      return this.color + message;
     }
 
     public static MLevel fromName(String name) {

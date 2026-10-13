@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.cmd;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import tk.slicecollections.maxteer.player.Profile;
@@ -28,25 +30,25 @@ public class FakeCommand extends Commands {
   @Override
   public void perform(CommandSender sender, String label, String[] args) {
     if (!(sender instanceof Player)) {
-      sender.sendMessage("§cApenas jogadores podem utilizar este comando.");
+      sender.sendMessage(MessageUtils.error("COMANDO", "Apenas jogadores podem utilizar este comando."));
       return;
     }
 
     Player player = (Player) sender;
     if (!player.hasPermission("mcore.cmd.fake") || (label.equalsIgnoreCase("fakel") && !player.hasPermission("mcore.cmd.fakelist"))) {
-      player.sendMessage("§cVocê não possui permissão para utilizar este comando.");
+      player.sendMessage(MessageUtils.error("PERMISSÃO", "Você não possui permissão para utilizar este comando."));
       return;
     }
 
     Profile profile = Profile.getProfile(player.getName());
     if (label.equalsIgnoreCase("fake")) {
       if (profile != null && profile.playingGame()) {
-        player.sendMessage("§cVocê não pode utilizar este comando no momento.");
+        player.sendMessage(MessageUtils.error("AÇÃO BLOQUEADA", "Você não pode utilizar este comando enquanto estiver em uma partida."));
         return;
       }
 
       if (FakeManager.getRandomNicks().stream().noneMatch(FakeManager::isUsable)) {
-        player.sendMessage(" \n §c§lALTERAR NICKNAME\n \n §cNenhum nickname está disponível para uso no momento.\n ");
+        player.sendMessage(MessageUtils.error("NICKNAME INDISPONÍVEL", "Nenhum nickname está disponível para uso no momento."));
         return;
       }
 
@@ -84,7 +86,7 @@ public class FakeCommand extends Commands {
       List<String> enabled = FakeManager.getRandomNicks().stream().filter(FakeManager::isUsable).collect(Collectors.toList());
       String fakeName = enabled.isEmpty() ? null : enabled.get(ThreadLocalRandom.current().nextInt(enabled.size()));
       if (fakeName == null) {
-        player.sendMessage(" \n §c§lALTERAR NICKNAME\n \n §cNenhum nickname está disponível para uso no momento.\n ");
+        player.sendMessage(MessageUtils.error("NICKNAME INDISPONÍVEL", "Nenhum nickname está disponível para uso no momento."));
         return;
       }
 
@@ -92,12 +94,12 @@ public class FakeCommand extends Commands {
       FakeManager.applyFake(player, fakeName, roleName, skin.equalsIgnoreCase("steve") ? STEVE : ALEX);
     } else if (label.equalsIgnoreCase("faker")) {
       if (profile != null && profile.playingGame()) {
-        player.sendMessage("§cVocê não pode utilizar este comando no momento.");
+        player.sendMessage(MessageUtils.error("AÇÃO BLOQUEADA", "Você não pode utilizar este comando enquanto estiver em uma partida."));
         return;
       }
 
       if (!FakeManager.isFake(player.getName())) {
-        player.sendMessage("§cVocê não está utilizando um nickname falso.");
+        player.sendMessage(MessageUtils.error("NICKNAME", "Você não está utilizando um nickname falso."));
         return;
       }
 
@@ -106,15 +108,15 @@ public class FakeCommand extends Commands {
       List<String> nicked = FakeManager.listNicked();
       StringBuilder sb = new StringBuilder();
       for (int index = 0; index < nicked.size(); index++) {
-        sb.append("§c").append(nicked.get(index)).append(" §fé na verdade ").append("§amcorefakereal:").append(nicked.get(index)).append(index + 1 == nicked.size() ? "" : "\n");
+        sb.append("§7• §f").append(nicked.get(index)).append(" §7é na verdade §amcorefakereal:").append(nicked.get(index)).append(index + 1 == nicked.size() ? "" : "\n");
       }
 
       nicked.clear();
       if (sb.length() == 0) {
-        sb.append("§cNão há nenhum usuário utilizando um nickname falso.");
+        sb.append("§7Nenhum jogador está utilizando um nickname falso.");
       }
 
-      player.sendMessage(" \n§eLista de nicknames falsos:\n \n" + sb.toString() + "\n ");
+      player.sendMessage(MessageUtils.info("§a§lNICKNAMES FALSOS\n\n" + sb.toString()));
     }
   }
 }

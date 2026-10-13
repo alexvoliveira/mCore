@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.bungee.cmd;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -25,18 +27,18 @@ public class FakeCommand extends Commands {
   @Override
   public void perform(CommandSender sender, String[] args) {
     if (!(sender instanceof ProxiedPlayer)) {
-      sender.sendMessage(TextComponent.fromLegacyText("§cApenas jogadores podem utilizar este comando."));
+      sender.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("COMANDO", "Apenas jogadores podem utilizar este comando.")));
       return;
     }
 
     ProxiedPlayer player = (ProxiedPlayer) sender;
     if (!player.hasPermission("mcore.cmd.fake")) {
-      player.sendMessage(TextComponent.fromLegacyText("§cVocê não possui permissão para utilizar este comando."));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("PERMISSÃO", "Você não possui permissão para utilizar este comando.")));
       return;
     }
 
     if (Bungee.getRandomNicks().stream().noneMatch(Bungee::isUsable)) {
-      player.sendMessage(TextComponent.fromLegacyText(" \n §c§lALTERAR NICKNAME\n \n §cNenhum nickname está disponível para uso no momento.\n "));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("NICKNAME INDISPONÍVEL", "Nenhum nickname está disponível para uso no momento.")));
       return;
     }
 
@@ -70,7 +72,7 @@ public class FakeCommand extends Commands {
     List<String> enabled = Bungee.getRandomNicks().stream().filter(Bungee::isUsable).collect(Collectors.toList());
     String fakeName = enabled.isEmpty() ? null : enabled.get(ThreadLocalRandom.current().nextInt(enabled.size()));
     if (fakeName == null) {
-      player.sendMessage(TextComponent.fromLegacyText(" \n §c§lALTERAR NICKNAME\n \n §cNenhum nickname está disponível para uso no momento.\n "));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("NICKNAME INDISPONÍVEL", "Nenhum nickname está disponível para uso no momento.")));
       return;
     }
 

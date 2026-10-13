@@ -44,26 +44,26 @@ public class FakeManager {
       CONFIG.set("fake.role", Arrays.asList(CONFIG.getString("fake.role")));
     }
     FAKE_ROLES = new TextComponent("");
-    for (BaseComponent component : TextComponent.fromLegacyText("§5§lALTERAR NICKNAME\n \n§0Escolha o cargo que gostaria de utilizar enquanto está disfarçado:\n ")) {
+    for (BaseComponent component : TextComponent.fromLegacyText("§a§lALTERAR NICKNAME\n\n§7Escolha o cargo que deseja utilizar enquanto estiver disfarçado:\n )) {
       FAKE_ROLES.addExtra(component);
     }
     for (String roleName : CONFIG.getStringList("fake.role")) {
       Role role = Role.getRoleByName(roleName);
       if (role != null) {
-        TextComponent component = new TextComponent("\n §0▪ " + role.getName());
+        TextComponent component = new TextComponent("\n §7• " + role.getName());
         component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§7Seu nickname será exibido como '" + role.getPrefix() + "Nickname'§7.")));
         component.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/fake " + roleName));
         FAKE_ROLES.addExtra(component);
       }
     }
     FAKE_SKINS = new TextComponent("");
-    for (BaseComponent component : TextComponent.fromLegacyText("§5§lALTERAR NICKNAME\n \n§0Enquanto disfarçado, sua skin será alterada para ajudar a te camuflar.\n \n§0Escolha sua skin:\n ")) {
+    for (BaseComponent component : TextComponent.fromLegacyText("§a§lALTERAR NICKNAME\n\n§7Enquanto estiver disfarçado, sua skin será alterada.\n\n§7Escolha uma skin:\n )) {
       FAKE_SKINS.addExtra(component);
     }
-    TextComponent STEVE = new TextComponent("\n §0▪ §7Steve");
+    TextComponent STEVE = new TextComponent("\n §7• §fSteve");
     STEVE.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§7Você irá obter a aparência de Steve.")));
     STEVE.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/fake {role} steve"));
-    TextComponent ALEX = new TextComponent("\n §0▪ §7Alex");
+    TextComponent ALEX = new TextComponent("\n §7• §fAlex");
     ALEX.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§7Você irá obter a aprência da Alex.")));
     ALEX.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/fake {role} alex"));
     FAKE_SKINS.addExtra(STEVE);

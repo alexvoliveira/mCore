@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.listeners;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -64,7 +66,7 @@ public class Listeners implements Listener {
       try {
         Profile.createOrLoadProfile(evt.getName());
       } catch (ProfileLoadException ex) {
-        LOGGER.log(Level.SEVERE, "Nao foi possível carregar os dados do perfil \"" + evt.getName() + "\": ", ex);
+        LOGGER.log(Level.SEVERE, "§4§lPERFIL NÃO CARREGADO §7Não foi possível carregar os dados de " + evt.getName() + ".", ex);
       }
     }
   }
@@ -79,7 +81,7 @@ public class Listeners implements Listener {
     Profile profile = Profile.getProfile(evt.getPlayer().getName());
     if (profile == null) {
       evt.disallow(PlayerLoginEvent.Result.KICK_OTHER,
-        " \n§cAparentemente o servidor não conseguiu carregar seu Perfil.\n \n§cIsso ocorre normalmente quando o servidor ainda está despreparado para receber logins, aguarde um pouco e tente novamente.");
+        MessageUtils.critical("PERFIL INDISPONÍVEL", "Não foi possível carregar seu perfil.\n\nAguarde alguns instantes e tente entrar novamente."));
       return;
     }
 
@@ -100,9 +102,9 @@ public class Listeners implements Listener {
       if (!((CraftServer) Bukkit.getServer()).getHandle().getServer().isRunning() || RESTART_WATCHDOG_STOPPING.get(RESTART_WATCHDOG.get(null))) {
         // server stopped - save SYNC
         if (!profile.saveSyncChecked()) {
-          LOGGER.severe("Synchronous profile save failed; verify the database: " + profile.getName());
+          LOGGER.severe("§4§lFALHA CRÍTICA AO SALVAR §7Não foi possível persistir o perfil de " + profile.getName() + ".");
         }
-        Core.getInstance().getLogger().info("Saved " + profile.getName() + "!");
+        Core.getInstance().getLogger().info("§a§lSALVO §7Perfil de " + profile.getName() + " gravado com sucesso.");
       } else {
         // server running - save ASYNC
         profile.save();
@@ -133,7 +135,7 @@ public class Listeners implements Listener {
     for (BaseComponent components : TextComponent.fromLegacyText(format)) {
       component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tell " + current + " "));
       component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-        TextComponent.fromLegacyText(StringUtils.getLastColor(role.getPrefix()) + current + "\n§fGrupo: " + role.getName() + "\n \n§eClique para enviar uma mensagem privada.")));
+        TextComponent.fromLegacyText(StringUtils.getLastColor(role.getPrefix()) + current + "\n§7Grupo: §f" + role.getName() + "\n \n§7Clique para enviar uma mensagem privada.")));
       component.addExtra(components);
     }
 
@@ -169,12 +171,12 @@ public class Listeners implements Listener {
 
           evt.setCancelled(true);
           PROTECTION_LOBBY.put(player.getName().toLowerCase(), System.currentTimeMillis() + 3000);
-          player.sendMessage("§aVocê tem certeza? Utilize /lobby novamente para voltar ao lobby.");
+          player.sendMessage(MessageUtils.info("Para confirmar sua saída, utilize /lobby novamente."));
         } else if (COMMAND_MAP.get(SIMPLE_COMMAND_MAP).containsKey("tell") && args.length > 1 && command.equals("tell") && !args[1].equalsIgnoreCase(player.getName())) {
           profile = Profile.getProfile(args[1]);
           if (profile != null && profile.getPreferencesContainer().getPrivateMessages() != PrivateMessages.TODOS) {
             evt.setCancelled(true);
-            player.sendMessage("§cEste usuário desativou as mensagens privadas.");
+            player.sendMessage(MessageUtils.error("MENSAGENS PRIVADAS", "Este usuário desativou as mensagens privadas."));
           }
         }
       }

@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.bungee.cmd;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -17,18 +19,18 @@ public class FakeResetCommand extends Commands {
   @Override
   public void perform(CommandSender sender, String[] args) {
     if (!(sender instanceof ProxiedPlayer)) {
-      sender.sendMessage(TextComponent.fromLegacyText("§cApenas jogadores podem utilizar este comando."));
+      sender.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("COMANDO", "Apenas jogadores podem utilizar este comando.")));
       return;
     }
 
     ProxiedPlayer player = (ProxiedPlayer) sender;
     if (!player.hasPermission("mcore.cmd.fake")) {
-      player.sendMessage(TextComponent.fromLegacyText("§cVocê não possui permissão para utilizar este comando."));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("PERMISSÃO", "Você não possui permissão para utilizar este comando.")));
       return;
     }
 
     if (!Bungee.isFake(player.getName())) {
-      player.sendMessage(TextComponent.fromLegacyText("§cVocê não está utilizando um nickname falso."));
+      player.sendMessage(TextComponent.fromLegacyText(MessageUtils.error("NICKNAME", "Você não está utilizando um nickname falso.")));
       return;
     }
 

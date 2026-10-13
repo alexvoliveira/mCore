@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.menus.profile.boosters;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import com.henryfabio.minecraft.inventoryapi.editor.InventoryEditor;
 import com.henryfabio.minecraft.inventoryapi.inventory.impl.paged.PagedInventory;
 import com.henryfabio.minecraft.inventoryapi.item.InventoryItem;
@@ -70,7 +72,7 @@ public class MenuBoostersList extends PagedInventory {
     }
     if (items.isEmpty()) {
       items.add(() -> InventoryItem.of(BukkitUtils.deserializeItemStack(
-          "GLASS_BOTTLE : 1 : nome>&cVocê não possui nenhum Multiplicador!")));
+          "GLASS_BOTTLE : 1 : nome>&7Nenhum multiplicador disponível.")));
     }
     return items;
   }
@@ -81,31 +83,30 @@ public class MenuBoostersList extends PagedInventory {
 
     if (type == BoosterType.NETWORK) {
       if (!Core.minigames.contains(Core.minigame)) {
-        current.getPlayer().sendMessage("§cVocê precisa estar em um servidor de Minigame para ativar esse Multiplicador.");
+        current.getPlayer().sendMessage(MessageUtils.error("MINIGAME NECESSÁRIO", "Você precisa estar em um servidor de minigame para ativar este multiplicador."));
         return;
       }
       if (!Booster.setNetworkBooster(Core.minigame, current, booster)) {
         EnumSound.ENDERMAN_TELEPORT.play(current.getPlayer(), 0.5F, 1.0F);
-        current.getPlayer().sendMessage("§cJá existe um Multiplicador Geral para o " + Core.minigame + " ativo.");
+        current.getPlayer().sendMessage(MessageUtils.error("MULTIPLICADOR ATIVO", "Já existe um multiplicador geral para " + Core.minigame + "."));
         current.getPlayer().closeInventory();
         return;
       }
       EnumSound.LEVEL_UP.play(current.getPlayer(), 0.5F, 1.0F);
-      Profile.listProfiles().forEach(other -> other.getPlayer().sendMessage(" \n "
-          + StringUtils.getLastColor(Role.getPlayerRole(current.getPlayer()).getPrefix()) + current.getPlayer().getName()
-          + " §7ativou um §6Multiplicador de Coins Geral§7.\n §bTODOS §7os jogadores recebem um bônus de "
-          + booster.getMultiplier() + "x §7nas partidas de §6" + Core.minigame + "§7.\n "));
+      Profile.listProfiles().forEach(other -> other.getPlayer().sendMessage(MessageUtils.success("MULTIPLICADOR GERAL ATIVADO",
+          StringUtils.getLastColor(Role.getPlayerRole(current.getPlayer()).getPrefix()) + current.getPlayer().getName()
+          + " ativou um multiplicador de Coins para todos.\n§7Bônus: §a§l" + booster.getMultiplier() + "x §7nas partidas de §a" + Core.minigame + "§7.")));
       return;
     }
 
     if (!current.getBoostersContainer().enable(booster)) {
       EnumSound.ENDERMAN_TELEPORT.play(current.getPlayer(), 0.5F, 1.0F);
-      current.getPlayer().sendMessage("§cVocê já possui um Multiplicador Pessoal ativo.");
+      current.getPlayer().sendMessage(MessageUtils.error("MULTIPLICADOR ATIVO", "Você já possui um multiplicador pessoal ativo."));
       current.getPlayer().closeInventory();
       return;
     }
-    current.getPlayer().sendMessage("§aVocê ativou um §6Multiplicador de Coins " + booster.getMultiplier()
-        + "x §8(" + TimeUtils.getTime(TimeUnit.HOURS.toMillis(booster.getHours())) + ")§a.");
+    current.getPlayer().sendMessage(MessageUtils.success("MULTIPLICADOR ATIVADO", "Multiplicador de Coins §a§l" + booster.getMultiplier()
+        + "x §7(" + TimeUtils.getTime(TimeUnit.HOURS.toMillis(booster.getHours())) + ") ativado."));
     new MenuBoosters(current);
   }
 }

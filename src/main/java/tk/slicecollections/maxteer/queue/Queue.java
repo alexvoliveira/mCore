@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.queue;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import org.bukkit.Bukkit;
@@ -42,7 +44,7 @@ public class Queue {
               continue;
             }
 
-            NMS.sendActionBar(queued.player, "§aVocê está na Fila para conectar-se a §8" + queued.server + " §7(Posição #" + position + ")");
+            NMS.sendActionBar(queued.player, "§7[§a§lFILA§7] ➜ §7Conectando a §f" + queued.server + " §7• Posição: §a#" + position);
             position++;
           }
 
@@ -72,7 +74,7 @@ public class Queue {
             String server = this.current.server;
             player.closeInventory();
             NMS.sendActionBar(player, "");
-            player.sendMessage("§aConectando...");
+            player.sendMessage(MessageUtils.success("CONECTANDO", "Solicitando conexão com §f" + server + "§7."));
             ByteArrayDataOutput out = ByteStreams.newDataOutput();
             out.writeUTF("Connect");
             out.writeUTF(server);
@@ -99,9 +101,9 @@ public class Queue {
                     this.readyToConnect = true;
                   } else {
                     Core.getInstance().getLogger().log(Level.WARNING,
-                      "O salvamento do perfil falhou; a transferência foi cancelada para proteger os dados.", failure);
+                      "§4§lFALHA CRÍTICA AO SALVAR §7A transferência foi cancelada para proteger os dados.", failure);
                     if (target.player != null && target.player.isOnline()) {
-                      target.player.sendMessage("§cNão foi possível salvar seus dados. A transferência foi cancelada; tente novamente mais tarde.");
+                      target.player.sendMessage(MessageUtils.critical("DADOS NÃO SALVOS", "A transferência foi cancelada para proteger seu perfil. Tente novamente mais tarde."));
                     }
                     players.remove(target);
                     target.destroy();

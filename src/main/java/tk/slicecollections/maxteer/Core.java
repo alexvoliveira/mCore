@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -78,7 +80,7 @@ public class Core extends MPlugin {
   @Override
   public void enable() {
     if (!NMS.setupNMS()) {
-      this.getLogger().warning("O plugin apenas funciona na versao 1_8_R3 (Atual: " + MinecraftVersion.getCurrentVersion().getVersion() + ")");
+      this.getLogger().warning("§4§lVERSÃO INCOMPATÍVEL §7O mCore requer Spigot 1.8_R3 (detectada: " + MinecraftVersion.getCurrentVersion().getVersion() + ").");
       Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
@@ -96,18 +98,18 @@ public class Core extends MPlugin {
       String plugin;
       while ((plugin = reader.readLine()) != null) {
         if (Bukkit.getPluginManager().getPlugin(plugin.split(" ")[0]) != null) {
-          warnings.add(" - " + plugin);
+          warnings.add(plugin);
         }
       }
     } catch (IOException ex) {
-      getLogger().log(Level.SEVERE, "Cannot load blacklist.txt: ", ex);
+      getLogger().log(Level.SEVERE, "§4§lERRO CRÍTICO §7Não foi possível carregar blacklist.txt.", ex);
     }
 
     if (!warnings.isEmpty()) {
       CommandSender sender = Bukkit.getConsoleSender();
-      StringBuilder sb = new StringBuilder(" \n §6§lAVISO IMPORTANTE\n \n §7Aparentemente você utiliza plugins que conflitam com o mCore.\n §7Você não poderá iniciar o servidor com os seguintes plugins:");
+      StringBuilder sb = new StringBuilder(MessageUtils.critical("CONFLITO DE PLUGINS", "Foram detectados plugins incompatíveis. O mCore não será iniciado:"));
       for (String warning : warnings) {
-        sb.append("\n§f").append(warning);
+        sb.append("\n§c• §7").append(warning);
       }
       sb.append("\n ");
       sender.sendMessage(sb.toString());
@@ -130,7 +132,7 @@ public class Core extends MPlugin {
     }
 
     if (!PlaceholderAPIPlugin.getInstance().getDescription().getVersion().equals("2.10.5")) {
-      Bukkit.getConsoleSender().sendMessage(" \n §6§lAVISO IMPORTANTE\n \n §7Utilize a versão 2.10.5 do PlaceHolderAPI, você está utilizando a v" + PlaceholderAPIPlugin.getInstance().getDescription().getVersion() + "\n ");
+      Bukkit.getConsoleSender().sendMessage(MessageUtils.critical("DEPENDÊNCIA INVÁLIDA", "É necessário PlaceholderAPI 2.10.5; versão encontrada: " + PlaceholderAPIPlugin.getInstance().getDescription().getVersion() + "."));
       Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
@@ -174,7 +176,7 @@ public class Core extends MPlugin {
     getServer().getMessenger().registerIncomingPluginChannel(this, "mCore", new PluginMessageListener());
 
     validInit = true;
-    this.getLogger().info("O plugin foi ativado.");
+    this.getLogger().info("§a§lINICIADO §7com sucesso.");
   }
 
   private void registerPacketListener(PacketListener listener) {
@@ -215,9 +217,9 @@ public class Core extends MPlugin {
         Profile profile = Profile.unloadProfile(player.getName());
         if (profile != null) {
           if (profile.saveSyncChecked()) {
-            this.getLogger().info("Saved " + profile.getName() + "!");
+            this.getLogger().info("§a§lSALVO §7Perfil de " + profile.getName() + " gravado com sucesso.");
           } else {
-            this.getLogger().severe("Synchronous profile save failed; verify the database before shutdown: " + profile.getName());
+            this.getLogger().severe("§4§lFALHA CRÍTICA AO SALVAR §7Perfil de " + profile.getName() + " não foi persistido antes do desligamento.");
           }
           profile.destroy();
         }
@@ -229,7 +231,7 @@ public class Core extends MPlugin {
       if (name != null) {
         Profile.unloadProfile(name);
         if (!profile.saveSyncChecked()) {
-          this.getLogger().severe("Synchronous save failed for retained profile during shutdown: " + name);
+          this.getLogger().severe("§4§lFALHA CRÍTICA AO SALVAR §7O perfil retido de " + name + " não foi persistido.");
         }
       }
       profile.destroy();
@@ -244,12 +246,12 @@ public class Core extends MPlugin {
       try {
         database.close();
       } catch (RuntimeException ex) {
-        this.getLogger().log(Level.SEVERE, "Failed to close the database during plugin shutdown.", ex);
+        this.getLogger().log(Level.SEVERE, "§4§lERRO CRÍTICO §7Falha ao encerrar o banco de dados durante o desligamento.", ex);
       }
     }
     Role.listRoles().clear();
     validInit = false;
-    this.getLogger().info("O plugin foi desativado.");
+    this.getLogger().info("§a§lDESLIGADO §7com segurança.");
     instance = null;
   }
 
@@ -287,7 +289,7 @@ public class Core extends MPlugin {
       QueuePlayer qp = queue.getQueuePlayer(player);
       if (qp != null) {
         if (qp.server.equalsIgnoreCase(name)) {
-          qp.player.sendMessage("§cVocê já está na fila de conexão!");
+          qp.player.sendMessage(MessageUtils.error("FILA", "Você já está na fila de conexão."));
         } else {
           qp.server = name;
         }

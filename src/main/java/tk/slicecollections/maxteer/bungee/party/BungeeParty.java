@@ -59,9 +59,9 @@ public class BungeeParty extends Party {
       this.sendData("newLeader", this.members.get(0).getName());
       this.leader = this.members.get(0);
       this.leader.setRole(LEADER);
-      this.broadcast(" \n" + Role.getPrefixed(this.leader.getName()) + " §ase tornou o novo Líder da Party!\n ");
+      this.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(this.leader.getName()) + " §a§lASSUMIU A LIDERANÇA §7da Party.");
     }
-    this.broadcast(" \n" + Role.getPrefixed(member) + " §asaiu da Party!\n ");
+    this.broadcast("§7[§d§lPARTY§7] ➜ " + Role.getPrefixed(member) + " §7§lSAIU §7da Party.");
   }
 
   @Override

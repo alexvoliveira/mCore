@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.menus;
 
+import tk.slicecollections.maxteer.utils.MessageUtils;
+
 import com.henryfabio.minecraft.inventoryapi.editor.InventoryEditor;
 import com.henryfabio.minecraft.inventoryapi.viewer.Viewer;
 import org.bukkit.Bukkit;
@@ -49,7 +51,7 @@ public class MenuServers extends PlayerMenuInventory implements Listener {
     Profile profile = Profile.getProfile(player.getName());
     if (profile == null) { player.closeInventory(); return; }
     if (ServerItem.DISABLED_SLOTS.contains(slot)) {
-      player.sendMessage("§cVocê já está conectado a este servidor.");
+      player.sendMessage(MessageUtils.error("CONEXÃO", "Você já está conectado a este servidor."));
       return;
     }
     ServerItem.listServers().stream().filter(item -> item.getSlot() == slot).findFirst()
