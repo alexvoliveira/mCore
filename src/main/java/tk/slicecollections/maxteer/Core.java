@@ -195,7 +195,7 @@ public class Core extends MPlugin {
     this.registeredPacketListeners.clear();
 
     if (this.expansion != null) {
-      this.expansion.unregister();
+      PlaceholderAPI.unregisterExpansion(this.expansion);
       this.expansion = null;
     }
 
