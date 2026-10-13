@@ -1,5 +1,8 @@
 package tk.slicecollections.maxteer;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketListener;
 import com.henryfabio.minecraft.inventoryapi.manager.InventoryManager;
@@ -54,6 +57,7 @@ import java.util.logging.Level;
 @SuppressWarnings("unchecked")
 public class Core extends MPlugin {
 
+  @Getter
   private static Core instance;
   private final List<PacketListener> registeredPacketListeners = new ArrayList<>();
   private org.bukkit.scheduler.BukkitTask profileCleanupTask;
@@ -266,19 +270,10 @@ public class Core extends MPlugin {
     }
   }
 
+  @Getter
+  @Setter
   private static Location lobby;
 
-  public static void setLobby(Location location) {
-    lobby = location;
-  }
-
-  public static Location getLobby() {
-    return lobby;
-  }
-
-  public static Core getInstance() {
-    return instance;
-  }
 
   public static void sendServer(Profile profile, String name) {
     if (!Core.getInstance().isEnabled()) {

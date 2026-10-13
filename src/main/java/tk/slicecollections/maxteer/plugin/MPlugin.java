@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.plugin;
 
+import lombok.Getter;
+
 import java.io.File;
 import org.bukkit.plugin.PluginLogger;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -16,6 +18,7 @@ import tk.slicecollections.maxteer.reflection.acessors.FieldAccessor;
 public abstract class MPlugin extends JavaPlugin {
 
   private static final FieldAccessor<PluginLogger> LOGGER_ACCESSOR = Accessors.getField(JavaPlugin.class, "logger", PluginLogger.class);
+  @Getter
   private final FileUtils fileUtils;
 
   public MPlugin() {
@@ -64,7 +67,4 @@ public abstract class MPlugin extends JavaPlugin {
     return new MWriter((MLogger) this.getLogger(), file, header);
   }
 
-  public FileUtils getFileUtils() {
-    return this.fileUtils;
-  }
 }

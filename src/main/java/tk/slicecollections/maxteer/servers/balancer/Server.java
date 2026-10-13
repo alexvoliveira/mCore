@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.servers.balancer;
 
+import lombok.Getter;
+
 import tk.slicecollections.maxteer.servers.ServerItem;
 import tk.slicecollections.maxteer.servers.ServerPing;
 import tk.slicecollections.maxteer.servers.balancer.elements.LoadBalancerObject;
@@ -14,6 +16,7 @@ import java.net.InetSocketAddress;
 public class Server implements LoadBalancerObject, NumberConnection {
 
   private ServerPing serverPing;
+  @Getter
   private String name;
   private int max;
 
@@ -26,10 +29,6 @@ public class Server implements LoadBalancerObject, NumberConnection {
   public void fetch() {
     this.serverPing.fetch();
     ServerItem.SERVER_COUNT.put(this.name, this.serverPing.getOnline());
-  }
-
-  public String getName() {
-    return this.name;
   }
 
   @Override

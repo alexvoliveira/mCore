@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.servers;
 
+import lombok.Getter;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -104,8 +106,11 @@ public class ServerPing {
     this.online = players.get("online").getAsInt();
   }
 
+  @Getter
   private volatile String motd = null;
+  @Getter
   private volatile int max = 0;
+  @Getter
   private volatile int online = 0;
 
   private int readVarInt(DataInputStream in) throws IOException {
@@ -136,17 +141,6 @@ public class ServerPing {
     }
   }
   
-  public String getMotd() {
-    return this.motd;
-  }
-  
-  public int getMax() {
-    return this.max;
-  }
-  
-  public int getOnline() {
-    return this.online;
-  }
 
   public String toString() {
     return "ServerPing{motd=" + motd + ", online=" + online + ", max=" + max + "}";

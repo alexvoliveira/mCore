@@ -30,6 +30,8 @@ dependencies {
     compileOnly("net.md-5:bungeecord-api:1.8-SNAPSHOT")
     compileOnly("com.comphenix.protocol:ProtocolLib:4.5.0")
     compileOnly("me.clip:placeholderapi:2.10.5")
+    compileOnly("org.projectlombok:lombok:1.18.48")
+    annotationProcessor("org.projectlombok:lombok:1.18.48")
 
     implementation("com.zaxxer:HikariCP:3.4.5")
     implementation("com.mysql:mysql-connector-j:8.0.33")

@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.bungee;
 
+import lombok.Getter;
+
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -24,6 +26,7 @@ import java.util.logging.Level;
  */
 public class Bungee extends Plugin {
 
+  @Getter
   private static Bungee instance;
 
   public Bungee() {
@@ -121,10 +124,6 @@ public class Bungee extends Plugin {
     if (Role.listRoles().isEmpty()) {
       Role.listRoles().add(new Role("&7Membro", "&7", "", false, false));
     }
-  }
-
-  public static Bungee getInstance() {
-    return instance;
   }
 
   public static final String STEVE =

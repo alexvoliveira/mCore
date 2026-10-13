@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.deliveries;
 
+import lombok.Getter;
+
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -21,12 +23,15 @@ import java.util.concurrent.TimeUnit;
  */
 public class Delivery {
 
+  @Getter
   private long id;
   private int days;
+  @Getter
   private int slot;
   private String permission;
   private List<DeliveryReward> rewards;
   private String icon;
+  @Getter
   private String message;
 
   public Delivery(int days, int slot, String permission, List<DeliveryReward> rewards, String icon, String message) {
@@ -39,16 +44,8 @@ public class Delivery {
     this.message = StringUtils.formatColors(message);
   }
 
-  public long getId() {
-    return this.id;
-  }
-
   public long getDays() {
     return TimeUnit.DAYS.toMillis(this.days);
-  }
-
-  public int getSlot() {
-    return this.slot;
   }
 
   public boolean hasPermission(Player player) {
@@ -83,10 +80,6 @@ public class Delivery {
       }
     }
     return item;
-  }
-
-  public String getMessage() {
-    return this.message;
   }
 
   private static final List<Delivery> DELIVERIES = new ArrayList<>();

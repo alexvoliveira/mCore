@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.player.hotbar;
 
+import lombok.Getter;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.bukkit.entity.Player;
@@ -14,6 +16,7 @@ import tk.slicecollections.maxteer.utils.BukkitUtils;
 public class Hotbar {
 
   private String id;
+  @Getter
   private List<HotbarButton> buttons;
 
   public Hotbar(String id) {
@@ -25,9 +28,6 @@ public class Hotbar {
     return this.id;
   }
   
-  public List<HotbarButton> getButtons() {
-    return this.buttons;
-  }
 
   public void apply(Profile profile) {
     Player player = profile.getPlayer();

@@ -1,5 +1,8 @@
 package tk.slicecollections.maxteer.utils;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import static java.lang.Integer.parseInt;
 
 import java.util.Iterator;
@@ -16,10 +19,13 @@ import org.bukkit.block.Block;
  *
  * @author Maxter
  */
+@Getter
 public class CubeID implements Iterable<Block> {
 
   private String world;
-  private int xmax, xmin, ymax, ymin, zmax, zmin;
+  private int xmax, ymax, ymin, zmax, zmin;
+  @Setter
+  private int xmin;
 
   public CubeID(Location l1, Location l2) {
     this.world = l1.getWorld().getName();
@@ -64,42 +70,12 @@ public class CubeID implements Iterable<Block> {
       .getBlockZ() >= zmin && loc.getBlockZ() <= zmax;
   }
 
-  public String getWorld() {
-    return world;
-  }
-
-  public int getXmin() {
-    return xmin;
-  }
-
-  public int getXmax() {
-    return xmax;
-  }
 
   @Override
   public String toString() {
     return world + "; " + xmax + "; " + xmin + "; " + ymax + "; " + ymin + "; " + zmax + "; " + zmin;
   }
 
-  public void setXmin(int xmin) {
-    this.xmin = xmin;
-  }
-
-  public int getYmax() {
-    return ymax;
-  }
-
-  public int getYmin() {
-    return ymin;
-  }
-
-  public int getZmax() {
-    return zmax;
-  }
-
-  public int getZmin() {
-    return zmin;
-  }
 
   public class CubeIterator implements Iterator<Block> {
     String world;

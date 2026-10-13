@@ -1,5 +1,8 @@
 package tk.slicecollections.maxteer.achievements;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import org.bukkit.inventory.ItemStack;
 import tk.slicecollections.maxteer.achievements.types.MurderAchievement;
 import tk.slicecollections.maxteer.achievements.types.SkyWarsAchievement;
@@ -14,15 +17,12 @@ import java.util.stream.Collectors;
 /**
  * @author Maxter
  */
+@Getter
+@AllArgsConstructor
 public abstract class Achievement {
 
   private String id;
   private String name;
-
-  public Achievement(String id, String name) {
-    this.id = id;
-    this.name = name;
-  }
 
   protected abstract void give(Profile profile);
 
@@ -41,14 +41,6 @@ public abstract class Achievement {
 
   public boolean isCompleted(Profile profile) {
     return profile.getAchievementsContainer().isCompleted(this);
-  }
-
-  public String getId() {
-    return this.id;
-  }
-
-  public String getName() {
-    return this.name;
   }
 
   private static final List<Achievement> ACHIEVEMENTS = new ArrayList<>();

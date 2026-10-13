@@ -1,5 +1,8 @@
 package tk.slicecollections.maxteer.database.cache;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
 import java.util.Locale;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -96,15 +99,11 @@ public class RoleCache {
     }
   }
 
+  @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
   private static final class CacheEntry {
     private final long expiresAtMillis;
     private final String role;
     private final String realName;
 
-    private CacheEntry(long expiresAtMillis, String role, String realName) {
-      this.expiresAtMillis = expiresAtMillis;
-      this.role = role;
-      this.realName = realName;
-    }
   }
 }

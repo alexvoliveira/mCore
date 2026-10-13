@@ -1,10 +1,13 @@
 package tk.slicecollections.maxteer.player.hotbar;
 
+import lombok.Getter;
+
 import tk.slicecollections.maxteer.player.Profile;
 
 /**
  * @author Maxter
  */
+@Getter
 public class HotbarAction {
 
   private String value;
@@ -26,11 +29,4 @@ public class HotbarAction {
     }
   }
   
-  public String getValue() {
-    return this.value;
-  }
-  
-  public HotbarActionType getActionType() {
-    return this.actionType;
-  }
 }

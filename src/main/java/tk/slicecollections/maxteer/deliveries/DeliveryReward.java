@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.deliveries;
 
+import lombok.Getter;
+
 import org.bukkit.Bukkit;
 import tk.slicecollections.maxteer.booster.Booster.BoosterType;
 import tk.slicecollections.maxteer.player.Profile;
@@ -58,14 +60,11 @@ public class DeliveryReward {
     PRIVATE_BOOSTER(3),
     NETWORK_BOOSTER(3);
 
-    private int parameters;
+    @Getter
+    private final int parameters;
 
     RewardType(int parameters) {
       this.parameters = parameters;
-    }
-
-    public int getParameters() {
-      return this.parameters;
     }
 
     public Object[] parseValues(String value) throws Exception {

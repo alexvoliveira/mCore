@@ -1,5 +1,8 @@
 package tk.slicecollections.maxteer.player;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -35,14 +38,19 @@ import java.util.stream.Collectors;
  */
 public class Profile {
 
+  @Getter
   private String name;
   private volatile long lastLoginAttemptMillis = System.currentTimeMillis();
 
   private Game<? extends GameTeam> game;
+  @Getter
+  @Setter
   private Hotbar hotbar;
+  @Getter
   private MScoreboard scoreboard;
 
   private Map<String, Long> lastHit = new HashMap<>();
+  @Getter
   private Map<String, Map<String, DataContainer>> tableMap;
 
   public Profile(String name) throws ProfileLoadException {
@@ -67,10 +75,6 @@ public class Profile {
 
   public void setHit(String name) {
     this.lastHit.put(name, System.currentTimeMillis() + 8000);
-  }
-
-  public void setHotbar(Hotbar hotbar) {
-    this.hotbar = hotbar;
   }
 
   public void setScoreboard(MScoreboard scoreboard) {
@@ -227,10 +231,6 @@ public class Profile {
     }
   }
 
-  public String getName() {
-    return this.name;
-  }
-
   public boolean isOnline() {
     return this.name != null && isOnline(this.name);
   }
@@ -260,10 +260,6 @@ public class Profile {
     return this.game != null && gameClass.isAssignableFrom(this.game.getClass()) ? (T) this.game : null;
   }
 
-  public Hotbar getHotbar() {
-    return this.hotbar;
-  }
-
   public boolean playingGame() {
     return this.game != null;
   }
@@ -277,10 +273,6 @@ public class Profile {
     // limpar após uso
     this.lastHit.clear();
     return hitters;
-  }
-
-  public MScoreboard getScoreboard() {
-    return this.scoreboard;
   }
 
   public void addStats(String table, String... keys) {
@@ -403,10 +395,6 @@ public class Profile {
 
   public <T extends AbstractContainer> T getAbstractContainer(String table, String key, Class<T> containerClass) {
     return this.getDataContainer(table, key).getContainer(containerClass);
-  }
-
-  public Map<String, Map<String, DataContainer>> getTableMap() {
-    return this.tableMap;
   }
 
   private static final Map<String, UUID> UUID_CACHE = new HashMap<>();

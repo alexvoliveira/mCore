@@ -1,5 +1,10 @@
 package tk.slicecollections.maxteer.booster;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
 import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.player.Profile;
 
@@ -10,6 +15,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Maxter
  */
+@Getter
+@AllArgsConstructor
 public class Booster {
 
   private static final long NETWORK_CACHE_TTL_NANOS = TimeUnit.SECONDS.toNanos(3);
@@ -19,22 +26,9 @@ public class Booster {
   private double multiplier;
   private long hours;
 
-  public Booster(double multiplier, long hours) {
-    this.multiplier = multiplier;
-    this.hours = hours;
-  }
-
   public void gc() {
     this.multiplier = 0.0D;
     this.hours = 0;
-  }
-
-  public double getMultiplier() {
-    return this.multiplier;
-  }
-
-  public long getHours() {
-    return this.hours;
   }
 
   @Override
@@ -131,13 +125,10 @@ public class Booster {
       : new NetworkBooster(booster.getBooster(), booster.getMultiplier(), booster.getExpires());
   }
 
+  @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
   private static final class CachedNetworkBooster {
     private final NetworkBooster booster;
     private final long expiresAtNanos;
 
-    private CachedNetworkBooster(NetworkBooster booster, long expiresAtNanos) {
-      this.booster = booster;
-      this.expiresAtNanos = expiresAtNanos;
-    }
   }
 }

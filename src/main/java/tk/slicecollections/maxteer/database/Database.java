@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.database;
 
+import lombok.Getter;
+
 import tk.slicecollections.maxteer.Manager;
 import tk.slicecollections.maxteer.booster.NetworkBooster;
 import tk.slicecollections.maxteer.database.cache.RoleCache;
@@ -51,6 +53,7 @@ public abstract class Database {
 
   public abstract CompletableFuture<Void> execute(String sql, Object... parameters);
 
+  @Getter
   private static Database instance;
   public static Logger LOGGER;
   private static Timer cacheTimer;
@@ -96,7 +99,4 @@ public abstract class Database {
     instance = null;
   }
 
-  public static Database getInstance() {
-    return instance;
-  }
 }

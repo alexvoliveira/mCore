@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.titles;
 
+import lombok.Getter;
+
 import javax.sql.rowset.CachedRowSet;
 import java.sql.SQLException;
 import java.util.logging.Level;
@@ -18,22 +20,16 @@ import java.util.List;
  */
 public class Title {
 
+  @Getter
   private String id;
   private String icon;
+  @Getter
   private String title;
 
   public Title(String id, String title, String desc) {
     this.id = id;
     this.icon = "%material%:%durability% : 1 : esconder>tudo : nome>%name% : desc>&fTítulo: " + title + "\n \n" + desc + "\n \n%action%";
     this.title = title;
-  }
-
-  public String getId() {
-    return this.id;
-  }
-
-  public String getTitle() {
-    return this.title;
   }
 
   public void give(Profile profile) {

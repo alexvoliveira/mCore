@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.player.role;
 
+import lombok.Getter;
+
 import tk.slicecollections.maxteer.Manager;
 import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.database.cache.RoleCache;
@@ -13,6 +15,7 @@ import java.util.List;
 /**
  * @author Maxter
  */
+@Getter
 public class Role {
 
   private int id;
@@ -32,32 +35,8 @@ public class Role {
     this.broadcast = broadcast;
   }
 
-  public int getId() {
-    return this.id;
-  }
-
-  public String getName() {
-    return this.name;
-  }
-
-  public String getPrefix() {
-    return this.prefix;
-  }
-
-  public String getPermission() {
-    return this.permission;
-  }
-
   public boolean isDefault() {
     return this.permission.isEmpty();
-  }
-
-  public boolean isAlwaysVisible() {
-    return this.alwaysVisible;
-  }
-
-  public boolean isBroadcast() {
-    return this.broadcast;
   }
 
   public boolean has(Object player) {

@@ -1,5 +1,8 @@
 package tk.slicecollections.maxteer.servers;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import org.bukkit.scheduler.BukkitRunnable;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.player.Profile;
@@ -14,19 +17,14 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @author Maxter
  */
+@Getter
+@AllArgsConstructor
 public class ServerItem {
 
   private String key;
   private int slot;
   private String icon;
   private BaseBalancer<Server> balancer;
-
-  public ServerItem(String key, int slot, String icon, BaseBalancer<Server> baseBalancer) {
-    this.key = key;
-    this.slot = slot;
-    this.icon = icon;
-    this.balancer = baseBalancer;
-  }
 
   public void connect(Profile profile) {
     Server server = balancer.next();
@@ -35,22 +33,6 @@ public class ServerItem {
     } else {
       profile.getPlayer().sendMessage("§cNão foi possível se conectar a esse servidor no momento!");
     }
-  }
-
-  public String getKey() {
-    return this.key;
-  }
-
-  public int getSlot() {
-    return this.slot;
-  }
-
-  public String getIcon() {
-    return this.icon;
-  }
-
-  public BaseBalancer<Server> getBalancer() {
-    return this.balancer;
   }
 
   private static final List<ServerItem> SERVERS = new ArrayList<>();

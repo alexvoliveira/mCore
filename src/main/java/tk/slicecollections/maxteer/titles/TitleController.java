@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.titles;
 
+import lombok.Getter;
+
 import com.comphenix.packetwrapper.WrapperPlayServerAttachEntity;
 import com.comphenix.packetwrapper.WrapperPlayServerEntityDestroy;
 import com.comphenix.packetwrapper.WrapperPlayServerEntityMetadata;
@@ -19,6 +21,7 @@ public class TitleController {
 
   private static final FieldAccessor<Integer> ENTITY_ID = Accessors.getField(MinecraftReflection.getEntityClass(), "entityCount", int.class);
 
+  @Getter
   private Player owner;
   private WrappedDataWatcher watcher;
   private boolean disabled = true;
@@ -141,7 +144,4 @@ public class TitleController {
     }
   }
 
-  public Player getOwner() {
-    return this.owner;
-  }
 }

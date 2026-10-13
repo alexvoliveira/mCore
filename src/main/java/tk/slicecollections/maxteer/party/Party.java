@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.party;
 
+import lombok.Getter;
+
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
@@ -31,7 +33,9 @@ public abstract class Party {
    */
   private static final long MINUTES_UNTIL_EXPIRE_INVITE = 1L;
 
+  @Getter
   private int slots;
+  @Getter
   private boolean isOpen;
   protected PartyPlayer leader;
   protected List<PartyPlayer> members;
@@ -158,10 +162,6 @@ public abstract class Party {
     this.lastOnlineTime = 0L;
   }
 
-  public int getSlots() {
-    return this.slots;
-  }
-
   public long onlineCount() {
     return this.members.stream().filter(PartyPlayer::isOnline).count();
   }
@@ -176,10 +176,6 @@ public abstract class Party {
 
   public PartyPlayer getPlayer(String name) {
     return this.members.stream().filter(pp -> pp.getName().equalsIgnoreCase(name)).findAny().orElse(null);
-  }
-
-  public boolean isOpen() {
-    return this.isOpen;
   }
 
   public boolean canJoin() {
