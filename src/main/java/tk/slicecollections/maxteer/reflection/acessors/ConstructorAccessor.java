@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.reflection.acessors;
 
+import lombok.Getter;
+
 import java.lang.reflect.Constructor;
 
 /**
@@ -9,6 +11,7 @@ import java.lang.reflect.Constructor;
  */
 public class ConstructorAccessor<T> {
 
+  @Getter
   private Constructor<T> handle;
 
   public ConstructorAccessor(Constructor<T> constructor) {
@@ -49,9 +52,7 @@ public class ConstructorAccessor<T> {
   /**
    * @return O {@link Constructor} representado nesse Accessor.
    */
-  public Constructor<T> getHandle() {
-    return handle;
-  }
+
 
   @Override
   public String toString() {

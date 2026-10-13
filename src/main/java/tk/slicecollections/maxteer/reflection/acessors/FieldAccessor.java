@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.reflection.acessors;
 
+import lombok.Getter;
+
 import java.lang.reflect.Field;
 import tk.slicecollections.maxteer.reflection.Accessors;
 
@@ -11,6 +13,7 @@ import tk.slicecollections.maxteer.reflection.Accessors;
 @SuppressWarnings("unchecked")
 public class FieldAccessor<TField> {
 
+  @Getter
   private Field handle;
 
   public FieldAccessor(Field field) {
@@ -65,9 +68,7 @@ public class FieldAccessor<TField> {
   /**
    * @return O {@link Field} representado nesse Accessor.
    */
-  public Field getHandle() {
-    return handle;
-  }
+
 
   @Override
   public String toString() {

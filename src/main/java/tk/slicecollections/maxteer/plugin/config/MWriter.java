@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.plugin.config;
 
+import lombok.Getter;
+
 import tk.slicecollections.maxteer.plugin.logger.MLogger;
 import tk.slicecollections.maxteer.utils.StringUtils;
 
@@ -152,7 +154,9 @@ public class MWriter {
 
   public static class YamlEntry {
 
+    @Getter
     private String annotation;
+    @Getter
     private Object value;
 
     public YamlEntry(Object[] array) {
@@ -160,13 +164,9 @@ public class MWriter {
       this.value = array[1];
     }
 
-    public String getAnnotation() {
-      return annotation;
-    }
 
-    public Object getValue() {
-      return value;
-    }
+
+
   }
 
 

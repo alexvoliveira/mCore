@@ -1,5 +1,7 @@
 package tk.slicecollections.maxteer.reflection.acessors;
 
+import lombok.Getter;
+
 import java.lang.reflect.Method;
 
 /**
@@ -9,6 +11,7 @@ import java.lang.reflect.Method;
  */
 public class MethodAccessor {
 
+  @Getter
   private Method handle;
 
   public MethodAccessor(Method method) {
@@ -50,9 +53,7 @@ public class MethodAccessor {
   /**
    * @return O {@link Method} representado nesse Accessor.
    */
-  public Method getHandle() {
-    return handle;
-  }
+
 
   @Override
   public String toString() {
