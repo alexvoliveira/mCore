@@ -1,43 +1,47 @@
-# Build local
+# Build — JDK 21 / Spigot 1.21.1
 
-## Requisitos
+## Status
 
-- JDK compatível com o alvo Java 8; use uma toolchain/ambiente de compilação validado para o legado.
-- Gradle 8.14.3 disponível para gerar o Wrapper.
-- Artefatos compatíveis com Spigot/CraftBukkit 1.8.8 (incluindo NMS `v1_8_R3`) e a API BungeeCord 1.8 acessíveis por HTTPS ou instalados em `mavenLocal()`.
-- ProtocolLib 4.5.0 e PlaceholderAPI 2.10.5 compatíveis com o servidor legado. O build consulta as URLs atuais de ProtocolLib e também repositórios espelho HTTPS para os artefatos antigos que não são mais encontrados em todos os repositórios originais.
+A branch `refactor/spigot-1.21.1-jdk21` is the migration branch, based on `refactor/stage1-security-gradle`. It is **not production-ready yet**: changing the dependency versions does not port the old NMS implementation. See [MIGRATION-1.21.1.md](MIGRATION-1.21.1.md) and [EXECUTION-STATUS.md](EXECUTION-STATUS.md).
 
-O código usa classes NMS da versão legada; gere o artefato compatível utilizando os BuildTools oficiais do Spigot para `1.8.8`. Confirme que a API BungeeCord publicada coincide com as assinaturas utilizadas pelo código antes de aceitar o build.
+## Requirements
 
-## Gerar Wrapper e compilar
+- JDK 21.
+- Network access to Maven Central, the Spigot snapshots repository, Mojang's library repository, PlaceholderAPI's repository, and JitPack.
+- Spigot 1.21.1 server for runtime tests.
+- ProtocolLib 5.4.0 and PlaceholderAPI 2.12.3 installed on the target server.
 
-Na raiz do projeto, com Gradle instalado:
+The Gradle Wrapper is pinned to Gradle 8.14.3. The build uses Java 21 toolchains and `options.release = 21`.
+
+## Compile and package
+
+From the repository root:
 
 ```sh
-sh scripts/bootstrap-gradle-wrapper.sh
-./gradlew clean build
+./gradlew --no-daemon clean build
 ```
 
-O Gradle Wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` e propriedades com checksum da distribuição) está versionado. Mantenha os scripts e o JAR alinhados com a versão definida em `gradle-wrapper.properties`.
+The packaged plugin artifact is `build/libs/mCore.jar`.
 
-O JAR de saída configurado é `build/libs/mCore.jar`. O `pom.xml` fica preservado enquanto a compilação Gradle não for validada. Não remova o Maven apenas por o arquivo Gradle existir.
+## API and dependency choices
 
-## Segurança e ambiente
+- Spigot: `org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT`.
+- BungeeCord API: `net.md-5:bungeecord-api:1.21-R0.1`.
+- ProtocolLib: `net.dmulloy2:ProtocolLib:5.4.0`.
+- PlaceholderAPI: `me.clip:placeholderapi:2.12.3`.
 
-Não adicione credenciais de banco ao repositório. Configure credenciais nos arquivos/configurações de runtime e restrinja os privilégios da conta SQL ao necessário. As URLs novas exigem TLS com validação de identidade/certificado; configure certificados e nomes DNS corretos no ambiente.
+The Mojang Maven repository is configured because the BungeeCord API has a transitive Brigadier dependency. ProtocolLib 5.4.0 uses the `net.dmulloy2` Maven coordinates while retaining the `com.comphenix.protocol` Java packages.
 
+The existing `pom.xml` is retained only as a legacy reference while Gradle and the source migration are being validated. Its Java 8, Spigot 1.8.8, ProtocolLib 4.5.0, PlaceholderAPI 2.10.5 and machine-specific system path do not represent this branch's target. Do not build this branch with Maven.
 
-## MySQL TLS with Aiven
+## Secrets and database
 
-The JDBC URL uses `sslMode=VERIFY_IDENTITY`: traffic is encrypted, the server certificate chain is validated, and the hostname must match the certificate. Do not set `sslMode=DISABLED` or accept arbitrary certificates.
+Do not commit database credentials. Use environment/runtime configuration and a restricted SQL account. TLS certificate and hostname validation for the Aiven MySQL connection must remain enabled.
 
-1. In the Aiven Console, open the MySQL service and download **CA certificate** from **Overview → Connection information**.
-2. Save the downloaded file as `plugins/mCore/ca.pem` on the machine running BungeeCord (or the Bukkit server if it connects directly to MySQL). The plugin can read this PEM certificate directly and generate a temporary PKCS12 truststore; running `keytool` is not required.
-3. Alternatively, set `MCORE_MYSQL_CA_CERT` to the absolute path of the downloaded PEM file.
-4. Set `MCORE_MYSQL_PASSWORD` in the environment of the actual Java process. Restart the process after changing environment variables.
+For the existing Aiven setup:
+1. Download the service CA certificate from the Aiven console.
+2. Save it as `plugins/mCore/ca.pem`, or set `MCORE_MYSQL_CA_CERT` to its absolute path.
+3. Set `MCORE_MYSQL_PASSWORD` in the environment of the actual Java server process.
+4. Restart the process after changing environment variables.
 
-The previous PKCS12 method remains supported: set both `MCORE_MYSQL_TRUSTSTORE` and `MCORE_MYSQL_TRUSTSTORE_PASSWORD`. When a CA PEM file is present, it takes precedence and is converted into a temporary truststore for the JDBC connection.
-
-For the existing installation, the config file is usually `plugins/mCore/config.yml`; the checked-in resource only supplies defaults for new installations. Confirm it contains the current Aiven host, port, database, and username. Do not put the database password in the repository or in a version-controlled YAML file. Rotate passwords that have been exposed.
-
-If the Aiven CA file is missing, the plugin now fails early with an explicit configuration message instead of proceeding to an opaque TLS handshake failure. TLS certificate and hostname verification remain enabled.
+Do not disable TLS verification to work around a certificate configuration issue.
