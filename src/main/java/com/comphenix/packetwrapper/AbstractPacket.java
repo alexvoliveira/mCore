@@ -17,7 +17,6 @@
 
 package com.comphenix.packetwrapper;
 
-import java.lang.reflect.InvocationTargetException;
 import org.bukkit.entity.Player;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
@@ -60,11 +59,7 @@ public abstract class AbstractPacket {
    * @throws RuntimeException If the packet cannot be sent.
    */
   public void sendPacket(Player receiver) {
-    try {
-      ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, getHandle());
-    } catch (InvocationTargetException e) {
-      throw new RuntimeException("Cannot send packet.", e);
-    }
+    ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, getHandle());
   }
 
   /**
