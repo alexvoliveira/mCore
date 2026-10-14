@@ -10,7 +10,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.command.SimpleCommandMap;
-import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -19,7 +18,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
-import org.spigotmc.WatchdogThread;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.Manager;
 import tk.slicecollections.maxteer.database.exception.ProfileLoadException;
@@ -36,6 +34,7 @@ import tk.slicecollections.maxteer.titles.TitleManager;
 import tk.slicecollections.maxteer.utils.StringUtils;
 
 import java.util.HashMap;
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -88,8 +87,20 @@ public class Listeners implements Listener {
     profile.setPlayer(evt.getPlayer());
   }
 
-  private static final FieldAccessor<WatchdogThread> RESTART_WATCHDOG = Accessors.getField(WatchdogThread.class, "instance", WatchdogThread.class);
-  private static final FieldAccessor<Boolean> RESTART_WATCHDOG_STOPPING = Accessors.getField(WatchdogThread.class, "stopping", boolean.class);
+  private static boolean isServerStopping() {
+    try {
+      Class<?> type = Class.forName("org.spigotmc.WatchdogThread");
+      Field instance = type.getDeclaredField("instance");
+      instance.setAccessible(true);
+      Object watchdog = instance.get(null);
+      if (watchdog == null) return false;
+      Field stopping = type.getDeclaredField("stopping");
+      stopping.setAccessible(true);
+      return stopping.getBoolean(watchdog);
+    } catch (ReflectiveOperationException | RuntimeException exception) {
+      return false;
+    }
+  }
 
   @EventHandler(priority = EventPriority.MONITOR)
   public void onPlayerQuit(PlayerQuitEvent evt) {
@@ -99,7 +110,7 @@ public class Listeners implements Listener {
         profile.getGame().leave(profile, profile.getGame());
       }
       TitleManager.leaveServer(profile);
-      if (!((CraftServer) Bukkit.getServer()).getHandle().getServer().isRunning() || RESTART_WATCHDOG_STOPPING.get(RESTART_WATCHDOG.get(null))) {
+      if (isServerStopping()) {
         // server stopped - save SYNC
         if (!profile.saveSyncChecked()) {
           LOGGER.severe("§4§lFALHA CRÍTICA AO SALVAR §7Não foi possível persistir o perfil de " + profile.getName() + ".");

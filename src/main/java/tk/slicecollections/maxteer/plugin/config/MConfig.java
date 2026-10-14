@@ -13,7 +13,8 @@ import java.util.Set;
 import java.util.logging.Level;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.libs.jline.internal.InputStreamReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import tk.slicecollections.maxteer.plugin.MPlugin;
 
 /**
@@ -45,7 +46,7 @@ public class MConfig {
     }
 
     try {
-      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao criar a config \"" + file.getName() + "\": ", ex);
     }
@@ -115,7 +116,7 @@ public class MConfig {
 
   public void reload() {
     try {
-      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao recarregar a config \"" + file.getName() + "\": ", ex);
     }

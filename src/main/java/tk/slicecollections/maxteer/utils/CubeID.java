@@ -8,7 +8,6 @@ import static java.lang.Integer.parseInt;
 import java.util.Iterator;
 import java.util.Random;
 
-import com.avaje.ebean.validation.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;

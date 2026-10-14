@@ -22,7 +22,6 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.injector.PacketConstructor;
-import com.comphenix.protocol.reflect.IntEnum;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 
@@ -37,7 +36,7 @@ public class WrapperPlayServerSpawnEntity extends AbstractPacket {
    *
    * @author Kristian
    */
-  public static class ObjectTypes extends IntEnum {
+  public static class ObjectTypes {
     public static final int BOAT = 1;
     public static final int ITEM_STACK = 2;
     public static final int MINECART = 10;
