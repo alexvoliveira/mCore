@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,11 +14,10 @@ import java.util.Set;
 import java.util.logging.Level;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.libs.jline.internal.InputStreamReader;
 import tk.slicecollections.maxteer.plugin.MPlugin;
 
 /**
- * @author Maxter
+ * @author Maxteer
  */
 public class MConfig {
 
@@ -44,8 +44,8 @@ public class MConfig {
       }
     }
 
-    try {
-      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+    try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
+      this.rawConfig = YamlConfiguration.loadConfiguration(reader);
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao criar a config \"" + file.getName() + "\": ", ex);
     }
@@ -92,7 +92,7 @@ public class MConfig {
   public boolean getBoolean(String path) {
     return this.rawConfig.getBoolean(path);
   }
-  
+
   public boolean getBoolean(String path, boolean def) {
     return this.rawConfig.getBoolean(path, def);
   }
@@ -100,7 +100,7 @@ public class MConfig {
   public List<String> getStringList(String path) {
     return this.rawConfig.getStringList(path);
   }
-  
+
   public List<Integer> getIntegerList(String path) {
     return this.rawConfig.getIntegerList(path);
   }
@@ -114,8 +114,8 @@ public class MConfig {
   }
 
   public void reload() {
-    try {
-      this.rawConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+    try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), java.nio.charset.StandardCharsets.UTF_8)) {
+      this.rawConfig = YamlConfiguration.loadConfiguration(reader);
     } catch (IOException ex) {
       plugin.getLogger().log(Level.SEVERE, "Um erro inesperado ocorreu ao recarregar a config \"" + file.getName() + "\": ", ex);
     }
@@ -131,15 +131,10 @@ public class MConfig {
     }
   }
 
-
-
-  private static Map<String, MConfig> cache = new HashMap<>();
+  private static final Map<String, MConfig> CACHE = new HashMap<>();
 
   public static MConfig getConfig(MPlugin plugin, String path, String name) {
-    if (!cache.containsKey(path + "/" + name)) {
-      cache.put(path + "/" + name, new MConfig(plugin, path, name));
-    }
-
-    return cache.get(path + "/" + name);
+    String key = path + "/" + name;
+    return CACHE.computeIfAbsent(key, ignored -> new MConfig(plugin, path, name));
   }
 }
