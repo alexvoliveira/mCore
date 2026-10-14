@@ -1,7 +1,5 @@
 package tk.slicecollections.maxteer.utils;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
 import org.bukkit.*;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -10,13 +8,19 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.profile.PlayerProfile;
+import org.bukkit.profile.PlayerTextures;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.chat.ComponentSerializer;
 import tk.slicecollections.maxteer.reflection.Accessors;
-import tk.slicecollections.maxteer.reflection.MinecraftReflection;
-import tk.slicecollections.maxteer.reflection.acessors.ConstructorAccessor;
 import tk.slicecollections.maxteer.reflection.acessors.FieldAccessor;
 import tk.slicecollections.maxteer.reflection.acessors.MethodAccessor;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -34,9 +38,6 @@ public class BukkitUtils {
    * Todas as cores prontas da classe {@link Color}
    */
   public static final List<FieldAccessor<Color>> COLORS;
-  public static final MethodAccessor GET_PROFILE;
-  public static final FieldAccessor<GameProfile> SKULL_META_PROFILE;
-
   static {
     COLORS = new ArrayList<>();
     for (Field field : Color.class.getDeclaredFields()) {
@@ -44,8 +45,6 @@ public class BukkitUtils {
         COLORS.add(new FieldAccessor<>(field));
       }
     }
-    GET_PROFILE = Accessors.getMethod(MinecraftReflection.getCraftBukkitClass("entity.CraftPlayer"), GameProfile.class, 0);
-    SKULL_META_PROFILE = Accessors.getField(MinecraftReflection.getCraftBukkitClass("inventory.CraftMetaSkull"), "profile", GameProfile.class);
   }
 
   private static Map<Class<?>, MethodAccessor> getHandleCache = new HashMap<>();
@@ -66,17 +65,9 @@ public class BukkitUtils {
   }
 
   public static void openBook(Player player, ItemStack book) {
-    Object entityPlayer = BukkitUtils.getHandle(player);
-
-    ItemStack old = player.getInventory().getItemInHand();
-    try {
-      player.getInventory().setItemInHand(book);
-      Accessors.getMethod(entityPlayer.getClass(), "openBook").invoke(entityPlayer, BukkitUtils.asNMSCopy(book));
-    } catch (Exception ex) {
-      ex.printStackTrace();
+    if (player != null && book != null && player.isOnline()) {
+      player.openBook(book);
     }
-    player.getInventory().setItemInHand(old);
-    player.updateInventory();
   }
 
   /**
@@ -188,9 +179,7 @@ public class BukkitUtils {
       }
 
       else if (opt.startsWith("skin>") && skull != null) {
-        GameProfile gp = new GameProfile(UUID.randomUUID(), null);
-        gp.getProperties().put("textures", new Property("textures", opt.split(">")[1]));
-        SKULL_META_PROFILE.set(skull, gp);
+        setSkullTexture(skull, opt.substring("skin>".length()));
       }
 
       else if (opt.startsWith("paginas>") && book != null) {
@@ -229,6 +218,36 @@ public class BukkitUtils {
 
     stack.setItemMeta(meta);
     return stack;
+  }
+
+  private static void setSkullTexture(SkullMeta skull, String textureValue) {
+    if (skull == null || textureValue == null || textureValue.isBlank()) {
+      return;
+    }
+    String url = textureValue;
+    if (!url.startsWith("https://textures.minecraft.net/texture/")) {
+      try {
+        String decoded = new String(Base64.getDecoder().decode(textureValue.split(":", 2)[0]), StandardCharsets.UTF_8);
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+            .compile("\\"url\\"\\s*:\\s*\\"(https?://textures\\.minecraft\\.net/texture/[^\\"]+)\\"")
+            .matcher(decoded);
+        if (!matcher.find()) {
+          throw new IllegalArgumentException("The texture value does not contain a Mojang texture URL.");
+        }
+        url = matcher.group(1).replace("http://", "https://");
+      } catch (IllegalArgumentException exception) {
+        throw new IllegalArgumentException("Invalid skull texture value.", exception);
+      }
+    }
+    try {
+      PlayerProfile profile = Bukkit.createPlayerProfile(UUID.randomUUID());
+      PlayerTextures textures = profile.getTextures();
+      textures.setSkin(new URL(url));
+      profile.setTextures(textures);
+      skull.setOwnerProfile(profile);
+    } catch (Exception exception) {
+      throw new IllegalArgumentException("Could not apply the custom skull texture.", exception);
+    }
   }
 
   /**
@@ -315,12 +334,11 @@ public class BukkitUtils {
    * @return O {@link ItemStack} modificado com o Perfil do jogador.
    */
   public static ItemStack putProfileOnSkull(Player player, ItemStack head) {
-    if (head == null || !(head.getItemMeta() instanceof SkullMeta)) {
+    if (player == null || head == null || !(head.getItemMeta() instanceof SkullMeta)) {
       return head;
     }
-
-    ItemMeta meta = head.getItemMeta();
-    SKULL_META_PROFILE.set(meta, (GameProfile) GET_PROFILE.invoke(player));
+    SkullMeta meta = (SkullMeta) head.getItemMeta();
+    meta.setOwningPlayer(player);
     head.setItemMeta(meta);
     return head;
   }
@@ -333,14 +351,49 @@ public class BukkitUtils {
    * @return O {@link ItemStack} modificado com o Perfil.
    */
   public static ItemStack putProfileOnSkull(Object profile, ItemStack head) {
-    if (head == null || !(head.getItemMeta() instanceof SkullMeta)) {
+    if (profile == null || head == null || !(head.getItemMeta() instanceof SkullMeta)) {
       return head;
     }
-
-    ItemMeta meta = head.getItemMeta();
-    SKULL_META_PROFILE.set(meta, (GameProfile) profile);
+    SkullMeta meta = (SkullMeta) head.getItemMeta();
+    if (profile instanceof PlayerProfile) {
+      meta.setOwnerProfile((PlayerProfile) profile);
+    } else if (profile instanceof org.bukkit.OfflinePlayer) {
+      meta.setOwningPlayer((org.bukkit.OfflinePlayer) profile);
+    } else if ("com.mojang.authlib.GameProfile".equals(profile.getClass().getName())) {
+      try {
+        Object properties = profile.getClass().getMethod("getProperties").invoke(profile);
+        Object candidates = properties.getClass().getMethod("get", Object.class).invoke(properties, "textures");
+        if (candidates instanceof Iterable<?>) {
+          for (Object property : (Iterable<?>) candidates) {
+            String value = readPropertyValue(property);
+            if (value != null) {
+              setSkullTexture(meta, value);
+              break;
+            }
+          }
+        }
+      } catch (ReflectiveOperationException exception) {
+        throw new IllegalArgumentException("Unsupported Mojang profile object.", exception);
+      }
+    } else {
+      throw new IllegalArgumentException("Expected a Bukkit PlayerProfile, OfflinePlayer, or Mojang GameProfile.");
+    }
     head.setItemMeta(meta);
     return head;
+  }
+
+  private static String readPropertyValue(Object property) throws ReflectiveOperationException {
+    for (String methodName : new String[] {"value", "getValue"}) {
+      try {
+        Object value = property.getClass().getMethod(methodName).invoke(property);
+        if (value instanceof String) {
+          return (String) value;
+        }
+      } catch (NoSuchMethodException ignored) {
+        // Authlib versions have used both record-style and bean-style accessors.
+      }
+    }
+    return null;
   }
 
   /**
@@ -355,15 +408,6 @@ public class BukkitUtils {
     item.setItemMeta(meta);
   }
 
-  private static Class<?> NBTagList = MinecraftReflection.getMinecraftClass("NBTTagList");
-  private static Class<?> NBTagString = MinecraftReflection.getMinecraftClass("NBTTagString");
-  private static ConstructorAccessor<?> constructorTagList = new ConstructorAccessor<>(NBTagList.getConstructors()[0]);
-  private static ConstructorAccessor<?> constructorTagString = new ConstructorAccessor<>(NBTagString.getConstructors()[1]);
-  private static MethodAccessor getTag = Accessors.getMethod(MinecraftReflection.getItemStackClass(), "getTag");
-  private static MethodAccessor setCompound = Accessors.getMethod(MinecraftReflection.getNBTTagCompoundClass(), "set", String.class, NBTagList.getSuperclass());
-  private static MethodAccessor addList = Accessors.getMethod(NBTagList, "add");
-  private static MethodAccessor asNMSCopy = Accessors.getMethod(MinecraftReflection.getCraftItemStackClass(), "asNMSCopy");
-  private static MethodAccessor asCraftMirror = Accessors.getMethod(MinecraftReflection.getCraftItemStackClass(), "asCraftMirror");
 
   /**
    * Transforma um {@link ItemStack} em ItemStack do NMS
@@ -372,7 +416,7 @@ public class BukkitUtils {
    * @return NMS ItemStack
    */
   public static Object asNMSCopy(ItemStack item) {
-    return asNMSCopy.invoke(null, item);
+    return invokeCraftItemStack("asNMSCopy", item);
   }
 
   /**
@@ -382,18 +426,44 @@ public class BukkitUtils {
    * @return ItemStack
    */
   public static ItemStack asCraftMirror(Object nmsItem) {
-    return (ItemStack) asCraftMirror.invoke(null, nmsItem);
+    return (ItemStack) invokeCraftItemStack("asCraftMirror", nmsItem);
+  }
+
+  private static Object invokeCraftItemStack(String name, Object argument) {
+    if (argument == null) {
+      throw new IllegalArgumentException("Item argument cannot be null.");
+    }
+    try {
+      Class<?> craftItemStack = Class.forName("org.bukkit.craftbukkit.inventory.CraftItemStack");
+      for (Method method : craftItemStack.getDeclaredMethods()) {
+        if (method.getName().equals(name) && Modifier.isStatic(method.getModifiers())
+            && method.getParameterCount() == 1
+            && method.getParameterTypes()[0].isInstance(argument)) {
+          method.setAccessible(true);
+          return method.invoke(null, argument);
+        }
+      }
+      throw new NoSuchMethodException("CraftItemStack." + name);
+    } catch (ReflectiveOperationException | RuntimeException exception) {
+      throw new IllegalStateException("CraftItemStack." + name + " is unavailable on this server.", exception);
+    }
   }
 
   public static ItemStack setNBTList(ItemStack item, String key, List<String> strings) {
-    Object nmsStack = asNMSCopy(item);
-    Object compound = getTag.invoke(nmsStack);
-    Object compoundList = constructorTagList.newInstance();
-    for (String string : strings) {
-      addList.invoke(compoundList, constructorTagString.newInstance(string));
+    if (item == null || key == null || strings == null) {
+      throw new IllegalArgumentException("Item, key, and values are required.");
     }
-    setCompound.invoke(compound, key, compoundList);
-    return asCraftMirror(nmsStack);
+    if (!"pages".equalsIgnoreCase(key) || !(item.getItemMeta() instanceof BookMeta)) {
+      throw new UnsupportedOperationException("Only Bukkit book-page metadata is supported; direct NBT list mutation was removed.");
+    }
+    BookMeta meta = (BookMeta) item.getItemMeta();
+    BaseComponent[][] pages = new BaseComponent[strings.size()][];
+    for (int index = 0; index < strings.size(); index++) {
+      pages[index] = ComponentSerializer.parse(strings.get(index));
+    }
+    meta.spigot().setPages(pages);
+    item.setItemMeta(meta);
+    return item;
   }
 
   /**
