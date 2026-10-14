@@ -18,6 +18,15 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
+    // Mojang hosts Brigadier, a transitive dependency of the BungeeCord API.
+    maven {
+        url = uri("https://libraries.minecraft.net/")
+        metadataSources {
+            mavenPom()
+            artifact()
+            ignoreGradleMetadataRedirection()
+        }
+    }
     maven { url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/") }
     maven { url = uri("https://jitpack.io") }
 }
