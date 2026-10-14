@@ -1,10 +1,15 @@
 # mCore
- Compilado de funções para plugins de Minecraft.
 
-## Refatoração em andamento
+Biblioteca compartilhada de funções para plugins Minecraft.
 
-A branch `refactor/stage1-security-gradle` traz uma etapa inicial de hardening de segurança e preparação de build Gradle. Ela não é uma refatoração completa nem está pronta para produção. Veja [docs/EXECUTION-STATUS.md](docs/EXECUTION-STATUS.md), [docs/BUILD.md](docs/BUILD.md) e [docs/DATA-MIGRATION.md](docs/DATA-MIGRATION.md) antes de compilar ou implantar.
+## Refatoração de segurança e persistência
 
-## Refatoração em andamento
+A branch `refactor/stage1-security-gradle` contém a primeira etapa de hardening de segurança e preparação do build Gradle. Ela consolida a persistência de produção em MySQL/HikariCP e inclui uma ferramenta offline para importar backups JSONL de MongoDB. Consulte [docs/EXECUTION-STATUS.md](docs/EXECUTION-STATUS.md) antes de implantar essa etapa.
 
-A branch `refactor/stage1-security-gradle` consolida a persistência de produção em MySQL/HikariCP e inclui uma ferramenta offline para importar backups JSONL de MongoDB. A refatoração ainda não está validada por um build completo; consulte [docs/EXECUTION-STATUS.md](docs/EXECUTION-STATUS.md), [docs/BUILD.md](docs/BUILD.md) e [docs/DATA-MIGRATION.md](docs/DATA-MIGRATION.md).
+## Migração para JDK 21 / Spigot 1.21.1
+
+A branch `refactor/spigot-1.21.1-jdk21` é a linha de migração para Java 21 e Spigot 1.21.1. **Ainda não está pronta para produção.** O código NMS 1.8.8 de NPCs, skins, pathfinding e hologramas exige uma implementação compatível com 1.21.1; alterar somente o Gradle não basta.
+
+- [Guia de build](docs/BUILD.md)
+- [Estado da migração](docs/EXECUTION-STATUS.md)
+- [Análise técnica da migração](docs/MIGRATION-1.21.1.md)
