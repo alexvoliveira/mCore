@@ -252,10 +252,22 @@ public final class NMS1_21_R1 implements INMS {
         if (player == null || packet == null) {
             return;
         }
-        if (!(packet instanceof PacketContainer)) {
-            throw new IllegalArgumentException("Spigot 1.21.1 requires a ProtocolLib PacketContainer");
+        PacketContainer container;
+        if (packet instanceof PacketContainer) {
+            container = (PacketContainer) packet;
+        } else if (packet instanceof com.comphenix.packetwrapper.AbstractPacket) {
+            container = ((com.comphenix.packetwrapper.AbstractPacket) packet).getHandle();
+        } else {
+            try {
+                container = PacketContainer.fromPacket(packet);
+            } catch (RuntimeException exception) {
+                throw new IllegalArgumentException(
+                    "Unsupported packet object; pass a PacketContainer, packet wrapper, or a ProtocolLib-supported packet",
+                    exception
+                );
+            }
         }
-        ProtocolLibrary.getProtocolManager().sendServerPacket(player, (PacketContainer) packet);
+        ProtocolLibrary.getProtocolManager().sendServerPacket(player, container);
     }
 
     @Override
