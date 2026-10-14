@@ -11,7 +11,7 @@ Esta branch contém a migração de build e uma primeira camada de compatibilida
 - A camada NMS moderna usa as interfaces Bukkit públicas e ProtocolLib para operações de pacote que não existem na API Bukkit.
 - A detecção de versão usa a versão Bukkit quando o nome do pacote CraftBukkit não é versionado.
 - A checagem rígida de PlaceholderAPI 2.10.5 foi removida. O contrato de expansão usado pelo mCore não precisa dessa versão exata.
-- A dependência de compilação é ProtocolLib 5.4.0 e PlaceholderAPI 2.12.3. Forks mais recentes podem ser usadas em runtime somente depois de validar compatibilidade com Spigot 1.21.1 e Java 21.
+- As dependências de compilação são ProtocolLib 5.3.0 e PlaceholderAPI 2.12.3. A fork ProtocolLib do proprietário atualmente declara `mcVersion=26.2` e usa toolchain JDK 25; a fork PlaceholderAPI está em linha de desenvolvimento 2.12.4-DEV. Nenhuma das forks deve ser adotada apenas por ter uma versão mais recente: primeiro é necessário construir para 1.21.1/JDK 21 e testar o runtime.
 
 ## Limites que precisam de teste
 
