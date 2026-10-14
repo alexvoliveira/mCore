@@ -83,7 +83,7 @@ public class BukkitUtils {
    * <li>pintar>{@link Color} ou pintar>r:g:b - Pinta os Itens: Armadura de Couro e Fogos de
    * Artifício.</li>
    * <li>dono>Notch - Seta o dono de uma cabeça (Recomendado skin>skinvalue}.</li>
-   * <li>skin>skinvalue - Seta o valor da Skin através do {@link GameProfile} para cabeças
+   * <li>skin>skinvalue - Seta o valor da Skin através do {@code GameProfile} para cabeças
    * customizadas.</li>
    * <li>paginas>Linha1 pagina1\nLinha2 pagina1{pular}Linha1 pagina2\nLinha2 pagina2 - Seta as páginas
    * do livro. (Utilize {pular} para pular para outra página)</li>
@@ -229,7 +229,7 @@ public class BukkitUtils {
       try {
         String decoded = new String(Base64.getDecoder().decode(textureValue.split(":", 2)[0]), StandardCharsets.UTF_8);
         java.util.regex.Matcher matcher = java.util.regex.Pattern
-            .compile("\\"url\\"\\s*:\\s*\\"(https?://textures\\.minecraft\\.net/texture/[^\\"]+)\\"")
+            .compile("https?://textures\\.minecraft\\.net/texture/[A-Za-z0-9]+")
             .matcher(decoded);
         if (!matcher.find()) {
           throw new IllegalArgumentException("The texture value does not contain a Mojang texture URL.");
@@ -329,7 +329,7 @@ public class BukkitUtils {
   /**
    * Seta a partir da {@code Reflection} o perfil de um {@link ItemStack} do tipo Cabeça.
    *
-   * @param player O jogador para requisitar o {@link GameProfile}.
+   * @param player O jogador para requisitar o {@code GameProfile}.
    * @param head   O {@link ItemStack} do tipo Cabeça.
    * @return O {@link ItemStack} modificado com o Perfil do jogador.
    */
@@ -346,7 +346,7 @@ public class BukkitUtils {
   /**
    * Seta a partir da {@code Reflection} o perfil de um {@link ItemStack} do tipo Cabeça.
    *
-   * @param profile O {@link GameProfile} para modificar.
+   * @param profile O {@code GameProfile} para modificar.
    * @param head    O {@link ItemStack} do tipo Cabeça.
    * @return O {@link ItemStack} modificado com o Perfil.
    */
