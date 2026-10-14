@@ -14,7 +14,7 @@ import tk.slicecollections.maxteer.nms.NMS;
 public class HologramAdapter extends PacketAdapter {
 
   public HologramAdapter() {
-    super(params().plugin(NPCLibrary.getPlugin()).types(PacketType.Play.Server.SPAWN_ENTITY, PacketType.Play.Server.SPAWN_ENTITY_LIVING, PacketType.Play.Server.ENTITY_METADATA));
+    super(params().plugin(NPCLibrary.getPlugin()).types(PacketType.Play.Server.SPAWN_ENTITY, PacketType.Play.Server.ENTITY_METADATA));
   }
 
   @Override
