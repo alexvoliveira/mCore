@@ -97,9 +97,7 @@ public enum ParticleEffect {
   }
 
   public boolean isSupported() {
-    if (requiredVersion == -1)
-      return true;
-    return ParticlePacket.getVersion() >= requiredVersion;
+    return ParticlePacket.getBukkitParticle(this) != null;
   }
 
   public static ParticleEffect fromName(String name) {
@@ -486,13 +484,13 @@ public enum ParticleEffect {
   }
 
 
+  /**
+   * Sends particles through Bukkit's public API instead of reflecting into NMS.
+   * The numeric IDs and data bytes above remain for source compatibility with
+   * callers of the legacy mCore API; modern block/item variants use Bukkit data.
+   */
   public static final class ParticlePacket {
     private static int version;
-    private static Class<?> enumParticle;
-    private static Constructor<?> packetConstructor;
-    private static Method getHandle;
-    private static Field playerConnection;
-    private static Method sendPacket;
     private static boolean initialized;
     private final ParticleEffect effect;
     private final float offsetX;
@@ -502,16 +500,21 @@ public enum ParticleEffect {
     private final int amount;
     private final boolean longDistance;
     private final ParticleData data;
-    private Object packet;
 
-    public ParticlePacket(ParticleEffect effect, float offsetX, float offsetY, float offsetZ, float speed, int amount, boolean longDistance, ParticleData data)
-      throws IllegalArgumentException {
+    public ParticlePacket(ParticleEffect effect, float offsetX, float offsetY, float offsetZ,
+                          float speed, int amount, boolean longDistance, ParticleData data) {
       initialize();
+      if (effect == null) {
+        throw new IllegalArgumentException("Particle effect cannot be null");
+      }
       if (speed < 0) {
         throw new IllegalArgumentException("The speed is lower than 0");
       }
       if (amount < 0) {
         throw new IllegalArgumentException("The amount is lower than 0");
+      }
+      if (getBukkitParticle(effect) == null) {
+        throw new IllegalArgumentException("Particle effect " + effect.name() + " has no Bukkit equivalent in 1.21.1");
       }
       this.effect = effect;
       this.offsetX = offsetX;
@@ -523,39 +526,38 @@ public enum ParticleEffect {
       this.data = data;
     }
 
-    public ParticlePacket(ParticleEffect effect, Vector direction, float speed, boolean longDistance, ParticleData data) throws IllegalArgumentException {
-      this(effect, (float) direction.getX(), (float) direction.getY(), (float) direction.getZ(), speed, 0, longDistance, data);
+    public ParticlePacket(ParticleEffect effect, Vector direction, float speed,
+                          boolean longDistance, ParticleData data) {
+      this(effect, (float) direction.getX(), (float) direction.getY(), (float) direction.getZ(),
+          speed, 0, longDistance, data);
     }
 
     public ParticlePacket(ParticleEffect effect, ParticleColor color, boolean longDistance) {
       this(effect, color.getValueX(), color.getValueY(), color.getValueZ(), 1, 0, longDistance, null);
     }
 
-    public static void initialize() throws VersionIncompatibleException {
+    public static synchronized void initialize() {
       if (initialized) {
         return;
       }
+      String bukkitVersion = Bukkit.getBukkitVersion();
+      if (bukkitVersion == null || bukkitVersion.isEmpty()) {
+        throw new IllegalStateException("Cannot determine the current Bukkit version");
+      }
+      String[] parts = bukkitVersion.split("-", 2)[0].split("\\.");
+      if (parts.length < 2) {
+        throw new IllegalStateException("Unexpected Bukkit version: " + bukkitVersion);
+      }
       try {
-        version = Integer.parseInt(ReflectionUtils.PackageType.getServerVersion().split("_")[1]);
-        if (version > 7) {
-          enumParticle = ReflectionUtils.PackageType.MINECRAFT_SERVER.getClass("EnumParticle");
-        }
-        Class<?> packetClass = ReflectionUtils.PackageType.MINECRAFT_SERVER.getClass(version < 7 ? "Packet63WorldParticles" : "PacketPlayOutWorldParticles");
-        packetConstructor = ReflectionUtils.getConstructor(packetClass);
-        getHandle = ReflectionUtils.getMethod("CraftPlayer", ReflectionUtils.PackageType.CRAFTBUKKIT_ENTITY, "getHandle");
-        playerConnection = ReflectionUtils.getField("EntityPlayer", ReflectionUtils.PackageType.MINECRAFT_SERVER, false, "playerConnection");
-        sendPacket = ReflectionUtils.getMethod(playerConnection.getType(), "sendPacket", ReflectionUtils.PackageType.MINECRAFT_SERVER.getClass("Packet"));
-      } catch (Exception exception) {
-        exception.printStackTrace();
-        throw new VersionIncompatibleException("Your current bukkit version seems to be incompatible with this library", exception);
+        version = Integer.parseInt(parts[1]);
+      } catch (NumberFormatException exception) {
+        throw new IllegalStateException("Unexpected Bukkit version: " + bukkitVersion, exception);
       }
       initialized = true;
     }
 
     public static int getVersion() {
-      if (!initialized) {
-        initialize();
-      }
+      initialize();
       return version;
     }
 
@@ -563,49 +565,92 @@ public enum ParticleEffect {
       return initialized;
     }
 
-    private void initializePacket(Location center) throws PacketInstantiationException {
-      if (packet != null) {
+    private static Particle getBukkitParticle(ParticleEffect effect) {
+      switch (effect) {
+        case EXPLOSION_NORMAL: return Particle.POOF;
+        case EXPLOSION_LARGE: return Particle.EXPLOSION;
+        case FIREWORKS_SPARK: return Particle.FIREWORK;
+        case WATER_BUBBLE: return Particle.BUBBLE;
+        case WATER_SPLASH: return Particle.SPLASH;
+        case WATER_WAKE: return Particle.FISHING;
+        case SUSPENDED:
+        case SUSPENDED_DEPTH: return Particle.UNDERWATER;
+        case CRIT: return Particle.CRIT;
+        case CRIT_MAGIC: return Particle.ENCHANTED_HIT;
+        case SMOKE_NORMAL: return Particle.SMOKE;
+        case SMOKE_LARGE: return Particle.LARGE_SMOKE;
+        case SPELL: return Particle.EFFECT;
+        case SPELL_INSTANT: return Particle.INSTANT_EFFECT;
+        case SPELL_MOB:
+        case SPELL_MOB_AMBIENT: return Particle.ENTITY_EFFECT;
+        case SPELL_WITCH: return Particle.WITCH;
+        case DRIP_WATER: return Particle.DRIPPING_WATER;
+        case DRIP_LAVA: return Particle.DRIPPING_LAVA;
+        case VILLAGER_ANGRY: return Particle.ANGRY_VILLAGER;
+        case VILLAGER_HAPPY: return Particle.HAPPY_VILLAGER;
+        case TOWN_AURA: return Particle.MYCELIUM;
+        case NOTE: return Particle.NOTE;
+        case PORTAL: return Particle.PORTAL;
+        case ENCHANTMENT_TABLE: return Particle.ENCHANT;
+        case FLAME: return Particle.FLAME;
+        case LAVA: return Particle.LAVA;
+        case CLOUD: return Particle.CLOUD;
+        case REDSTONE: return Particle.DUST;
+        case SNOWBALL: return Particle.ITEM_SNOWBALL;
+        case SNOW_SHOVEL: return Particle.SNOWFLAKE;
+        case SLIME: return Particle.ITEM_SLIME;
+        case HEART: return Particle.HEART;
+        case BARRIER: return Particle.BLOCK_MARKER;
+        case ITEM_CRACK: return Particle.ITEM;
+        case BLOCK_CRACK: return Particle.BLOCK;
+        case BLOCK_DUST: return Particle.FALLING_DUST;
+        case WATER_DROP: return Particle.RAIN;
+        case MOB_APPEARANCE: return Particle.ELDER_GUARDIAN;
+        case FOOTSTEP:
+        case ITEM_TAKE:
+        default: return null;
+      }
+    }
+
+    private Object getBukkitData() {
+      if (effect == SPELL_MOB || effect == SPELL_MOB_AMBIENT) {
+        return Color.fromRGB(toChannel(offsetX), toChannel(offsetY), toChannel(offsetZ));
+      }
+      if (effect == REDSTONE) {
+        return new Particle.DustOptions(
+            Color.fromRGB(toChannel(offsetX), toChannel(offsetY), toChannel(offsetZ)), 1.0F);
+      }
+      if (data instanceof ParticleEffect.BlockData) {
+        return data.getMaterial().createBlockData();
+      }
+      if (data instanceof ParticleEffect.ItemData) {
+        // Legacy durability/data values have no general equivalent in modern item components.
+        return new ItemStack(data.getMaterial());
+      }
+      return null;
+    }
+
+    private int toChannel(float component) {
+      return Math.max(0, Math.min(255, Math.round(component * 255.0F)));
+    }
+
+    public void sendTo(Location center, Player player) {
+      if (center == null || center.getWorld() == null) {
+        throw new IllegalArgumentException("Particle location must belong to a world");
+      }
+      if (player == null || !player.isOnline() || !player.getWorld().equals(center.getWorld())) {
         return;
       }
-      try {
-        packet = packetConstructor.newInstance();
-        if (version < 8) {
-          String name = effect.getName();
-          if (data != null) {
-            name += data.getPacketDataString();
-          }
-          ReflectionUtils.setValue(packet, true, "a", name);
-        } else {
-          ReflectionUtils.setValue(packet, true, "a", enumParticle.getEnumConstants()[effect.getId()]);
-          ReflectionUtils.setValue(packet, true, "j", longDistance);
-          if (data != null) {
-            ReflectionUtils.setValue(packet, true, "k", data.getPacketData());
-          }
-        }
-        ReflectionUtils.setValue(packet, true, "b", (float) center.getX());
-        ReflectionUtils.setValue(packet, true, "c", (float) center.getY());
-        ReflectionUtils.setValue(packet, true, "d", (float) center.getZ());
-        ReflectionUtils.setValue(packet, true, "e", offsetX);
-        ReflectionUtils.setValue(packet, true, "f", offsetY);
-        ReflectionUtils.setValue(packet, true, "g", offsetZ);
-        ReflectionUtils.setValue(packet, true, "h", speed);
-        ReflectionUtils.setValue(packet, true, "i", amount);
-      } catch (Exception exception) {
-        throw new PacketInstantiationException("Packet instantiation failed", exception);
+      Particle particle = getBukkitParticle(effect);
+      if (particle == null) {
+        throw new IllegalStateException("Unsupported particle effect: " + effect.name());
       }
+      player.spawnParticle(particle, center, amount, offsetX, offsetY, offsetZ,
+          speed, getBukkitData(), longDistance);
     }
 
-    public void sendTo(Location center, Player player) throws PacketInstantiationException, PacketSendingException {
-      initializePacket(center);
-      try {
-        sendPacket.invoke(playerConnection.get(getHandle.invoke(player)), packet);
-      } catch (Exception exception) {
-        throw new PacketSendingException("Failed to send the packet to player '" + player.getName() + "'", exception);
-      }
-    }
-
-    public void sendTo(Location center, List<Player> players) throws IllegalArgumentException {
-      if (players.isEmpty()) {
+    public void sendTo(Location center, List<Player> players) {
+      if (players == null || players.isEmpty()) {
         throw new IllegalArgumentException("The player list is empty");
       }
       for (Player player : players) {
@@ -613,43 +658,19 @@ public enum ParticleEffect {
       }
     }
 
-    public void sendTo(Location center, double range) throws IllegalArgumentException {
+    public void sendTo(Location center, double range) {
+      if (center == null || center.getWorld() == null) {
+        throw new IllegalArgumentException("Particle location must belong to a world");
+      }
       if (range < 1) {
         throw new IllegalArgumentException("The range is lower than 1");
       }
-      String worldName = center.getWorld().getName();
-      double squared = range * range;
+      double squaredRange = range * range;
       for (Player player : Bukkit.getOnlinePlayers()) {
-        if (!player.getWorld().getName().equals(worldName) || player.getLocation().distanceSquared(center) > squared) {
-          continue;
+        if (player.getWorld().equals(center.getWorld())
+            && player.getLocation().distanceSquared(center) <= squaredRange) {
+          sendTo(center, player);
         }
-        sendTo(center, player);
-      }
-    }
-
-    private static final class VersionIncompatibleException extends RuntimeException {
-      private static final long serialVersionUID = 3203085387160737484L;
-
-      public VersionIncompatibleException(String message, Throwable cause) {
-        super(message, cause);
-      }
-    }
-
-
-    private static final class PacketInstantiationException extends RuntimeException {
-      private static final long serialVersionUID = 3203085387160737484L;
-
-      public PacketInstantiationException(String message, Throwable cause) {
-        super(message, cause);
-      }
-    }
-
-
-    private static final class PacketSendingException extends RuntimeException {
-      private static final long serialVersionUID = 3203085387160737484L;
-
-      public PacketSendingException(String message, Throwable cause) {
-        super(message, cause);
       }
     }
   }
