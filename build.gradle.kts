@@ -23,7 +23,7 @@ repositories {
 
 dependencies {
     compileOnly("org.spigotmc:spigot:1.21.1-R0.1-SNAPSHOT")
-    compileOnly("net.md-5:bungeecord-api:1.21-R0.2-SNAPSHOT")
+    compileOnly("net.md-5:bungeecord-api:1.21-R0.2")
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     compileOnly("me.clip:placeholderapi:2.12.3")
     compileOnly("org.projectlombok:lombok:1.18.48")
