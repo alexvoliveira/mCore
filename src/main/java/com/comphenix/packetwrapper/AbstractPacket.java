@@ -59,7 +59,11 @@ public abstract class AbstractPacket {
    * @throws RuntimeException If the packet cannot be sent.
    */
   public void sendPacket(Player receiver) {
-    ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, getHandle());
+    try {
+      ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, getHandle());
+    } catch (Exception e) {
+      throw new RuntimeException("Cannot send packet.", e);
+    }
   }
 
   /**
