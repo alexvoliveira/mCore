@@ -5,7 +5,7 @@
 - JDK 21.
 - Gradle Wrapper 8.14.3 (versionado no repositório).
 - A API oficial Spigot 1.21.1, resolvida por HTTPS do repositório de snapshots do Spigot.
-- ProtocolLib 5.4.0 e PlaceholderAPI 2.12.3 para compilar. Em runtime, use versões compatíveis com Spigot 1.21.1 e Java 21.
+- ProtocolLib 5.3.0 e PlaceholderAPI 2.12.3 para compilar. A API do ProtocolLib foi fixada na linha compatível com Minecraft 1.21; valide o JAR instalado no Spigot 1.21.1 antes de produção.
 
 A source vinculada `alexvoliveira/Spigot-1.21.1` contém a API Bukkit, não as implementações internas CraftBukkit/NMS. A implementação ativa desta branch usa somente Bukkit/ProtocolLib; os fontes antigos `v1_8_R3` ficam fora do source set. Portanto, o build compila diretamente contra `org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT` e não gera um servidor Spigot completo.
 
