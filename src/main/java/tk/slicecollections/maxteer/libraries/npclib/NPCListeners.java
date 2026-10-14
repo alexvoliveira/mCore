@@ -207,20 +207,21 @@ public class NPCListeners implements Listener {
   public void onChunkUnload(ChunkUnloadEvent evt) {
     ChunkCoord coord = toCoord(evt.getChunk());
     Location location = new Location(null, 0, 0, 0);
+
     for (NPC npc : NPCLibrary.listNPCS()) {
-      if (npc != null && npc.isSpawned()) {
-        location = npc.getEntity().getLocation(location);
-
-        if (toCoord(location).equals(coord)) {
-          if (!npc.despawn()) {
-            evt.setCancelled(true);
-            respawnAllFromCoord(coord);
-            return;
-          }
-
-          this.toRespawn.put(coord, npc);
-        }
+      if (npc == null || !npc.isSpawned() || npc.getEntity() == null) {
+        continue;
       }
+
+      location = npc.getEntity().getLocation(location);
+      if (!toCoord(location).equals(coord)) {
+        continue;
+      }
+
+      // ChunkUnloadEvent is not cancellable on modern Spigot. Despawn before
+      // unloading and remember the logical NPC so ChunkLoadEvent can restore it.
+      npc.despawn();
+      this.toRespawn.put(coord, npc);
     }
   }
 

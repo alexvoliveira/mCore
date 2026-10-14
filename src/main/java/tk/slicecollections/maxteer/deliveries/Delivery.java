@@ -71,7 +71,7 @@ public class Delivery {
 
     ItemStack item = BukkitUtils.deserializeItemStack(this.icon.replace("{color}", !permission && !alreadyClaimed ? "&a" : "&c") + desc);
     if (!permission && alreadyClaimed) {
-      if (item.getType() == Material.STORAGE_MINECART) {
+      if (item.getType() == Material.CHEST_MINECART) {
         item.setType(Material.MINECART);
         item.setDurability((short) 0);
       } else if (item.getType() == Material.POTION) {

@@ -131,22 +131,20 @@ public class HologramListeners implements Listener {
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onChunkUnload(ChunkUnloadEvent evt) {
     ChunkCoord coord = toCoord(evt.getChunk());
-    Location location = new Location(null, 0, 0, 0);
+
     for (Hologram hologram : HologramLibrary.listHolograms()) {
-      if (hologram != null && hologram.isSpawned()) {
-        location = hologram.getLocation().clone();
-
-        if (toCoord(location).equals(coord)) {
-          hologram.spawn();
-          if (hologram.isSpawned()) {
-            evt.setCancelled(true);
-            respawnAllFromCoord(coord);
-            return;
-          }
-
-          this.toRespawn.put(coord, hologram);
-        }
+      if (hologram == null || !hologram.isSpawned()) {
+        continue;
       }
+
+      if (!toCoord(hologram.getLocation()).equals(coord)) {
+        continue;
+      }
+
+      // Modern Spigot does not allow cancelling a chunk unload. Remove the
+      // backing entities and recreate them when the chunk loads again.
+      hologram.despawn();
+      this.toRespawn.put(coord, hologram);
     }
   }
 

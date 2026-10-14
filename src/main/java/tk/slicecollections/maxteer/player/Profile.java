@@ -102,7 +102,7 @@ public class Profile {
     player.setLevel(0);
     player.setAllowFlight(false);
     player.closeInventory();
-    player.spigot().setCollidesWithEntities(true);
+    player.setCollidable(true);
     for (PotionEffect pe : player.getActivePotionEffects()) {
       player.removePotionEffect(pe.getType());
     }

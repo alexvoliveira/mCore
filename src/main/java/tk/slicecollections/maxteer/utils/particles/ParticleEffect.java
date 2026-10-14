@@ -123,7 +123,7 @@ public enum ParticleEffect {
 
   private static boolean isWater(Location location) {
     Material material = location.getBlock().getType();
-    return material == Material.WATER || material == Material.STATIONARY_WATER;
+    return material == Material.WATER;
   }
 
   private static boolean isLongDistance(Location location, List<Player> players) {

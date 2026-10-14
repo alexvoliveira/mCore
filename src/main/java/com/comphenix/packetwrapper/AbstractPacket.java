@@ -75,7 +75,7 @@ public abstract class AbstractPacket {
    */
   public void recievePacket(Player sender) {
     try {
-      ProtocolLibrary.getProtocolManager().recieveClientPacket(sender, getHandle());
+      ProtocolLibrary.getProtocolManager().receiveClientPacket(sender, getHandle(), false);
     } catch (Exception e) {
       throw new RuntimeException("Cannot recieve packet.", e);
     }
