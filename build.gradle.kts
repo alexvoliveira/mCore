@@ -14,6 +14,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://libraries.minecraft.net/") }
     maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
     maven { url = uri("https://repo.md-5.net/content/repositories/snapshots/") }
     maven { url = uri("https://repo.helpch.at/releases/") }
