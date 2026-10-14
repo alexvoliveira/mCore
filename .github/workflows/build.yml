@@ -31,13 +31,6 @@ jobs:
           java-version: "21"
           cache: gradle
 
-      - name: Build Spigot 1.21.1 API/NMS artifacts
-        uses: SpraxDev/Action-SpigotMC@v5
-        with:
-          versions: "1.21.1"
-          generateSrc: false
-          generateDoc: false
-
       - name: Validate offline data importer
         run: python3 -m unittest discover -s tests -v
 

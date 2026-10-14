@@ -4,10 +4,10 @@
 
 - JDK 21.
 - Gradle Wrapper 8.14.3 (versionado no repositório).
-- Spigot/CraftBukkit 1.21.1 gerado pelo BuildTools e instalado em `mavenLocal()` para compilar contra o artefato `org.spigotmc:spigot:1.21.1-R0.1-SNAPSHOT`.
-- ProtocolLib 5.4.0 e PlaceholderAPI 2.12.3 para compilar. Em runtime, use versões compatíveis com Spigot 1.21.1 e Java 21; forks em desenvolvimento precisam ser validadas no servidor de teste.
+- A API oficial Spigot 1.21.1, resolvida por HTTPS do repositório de snapshots do Spigot.
+- ProtocolLib 5.4.0 e PlaceholderAPI 2.12.3 para compilar. Em runtime, use versões compatíveis com Spigot 1.21.1 e Java 21.
 
-O repositório `alexvoliveira/Spigot-1.21.1` contém a API Bukkit, mas não contém as implementações internas CraftBukkit/NMS. Por isso, a compilação não pode obter classes internas do servidor a partir desse repositório. A implementação ativa desta branch usa a API pública Bukkit e ProtocolLib; os fontes antigos `v1_8_R3` ficam fora do source set.
+A source vinculada `alexvoliveira/Spigot-1.21.1` contém a API Bukkit, não as implementações internas CraftBukkit/NMS. A implementação ativa desta branch usa somente Bukkit/ProtocolLib; os fontes antigos `v1_8_R3` ficam fora do source set. Portanto, o build compila diretamente contra `org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT` e não gera um servidor Spigot completo.
 
 ## Compilar
 
@@ -17,9 +17,10 @@ Na raiz do projeto:
 ./gradlew --no-daemon clean build
 ```
 
-O artefato de saída é `build/libs/mCore.jar`. O workflow `mCore - JDK 21 / Spigot 1.21.1 validation` executa testes do importador e compila o JAR no GitHub Actions.
+O artefato de saída é `build/libs/mCore.jar`. O workflow do GitHub Actions executa os testes do importador e compila o JAR em JDK 21, sem reconstruir o servidor inteiro.
 
 O `pom.xml` histórico ainda descreve dependências e caminhos locais da versão antiga. Use o Gradle Wrapper como build oficial desta branch; não publique artefatos gerados pelo Maven.
+
 
 ## Segurança e ambiente
 

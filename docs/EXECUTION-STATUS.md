@@ -1,34 +1,36 @@
-# mCore — estado da refatoração
+# mCore — estado da migração
 
-Esta branch está em refatoração incremental e **não deve ser implantada em produção até a validação completa do build e dos dados**.
+A branch `refactor/jdk21-spigot-1.21.1` foi criada sobre `refactor/stage1-security-gradle`, preservando as alterações de segurança e build já existentes. Esta migração permanece em validação e **não deve ser implantada em produção até os testes do servidor terminarem**.
 
-## Implementado no código de produção
+## Implementado nesta branch
 
-- Um único backend de persistência: MySQL por HikariCP.
-- Remoção das classes de produção `MongoDBDatabase`, `MySQLDatabase` sem pool e do conversor online MySQL→MongoDB.
-- Títulos personalizados lidos da tabela SQL `mCoreTitles`; tabelas de perfil continuam em `mCoreProfile`, `mCoreSkyWars`, `mCoreTheBridge`, `mCoreMurder` e `mCoreNetworkBooster`.
-- Configuração JDBC com `sslMode=VERIFY_IDENTITY` e nome de driver do Connector/J 8.
-- Consultas de alterações legadas de schema encaminhadas pelo contrato comum `Database`.
-- Escrita assíncrona serializada por um executor único para manter a ordem de submissão de operações; a análise de perda de atualizações e backpressure ainda precisa ser concluída.
-- Comando de conversão online removido; há agora um importador offline baseado em exports JSONL, sem MongoDB driver no plugin.
-- Desativação de instalação automática de JARs sem validação criptográfica e de encerramento do processo com `System.exit(0)`.
-- Scaffold Gradle Kotlin DSL e documentação inicial.
+- Build Gradle Kotlin DSL com toolchain JDK 21 e `options.release = 21`.
+- Dependência de compilação direcionada à API Bukkit/Spigot 1.21.1; o projeto não precisa compilar o servidor CraftBukkit completo para a camada de compatibilidade nova.
+- Fonte legado `nms/v1_8_R3` excluído da compilação ativa.
+- Detecção da versão atualizada para funcionar com `Server#getBukkitVersion()` quando a implementação CraftBukkit não fornece pacote versionado.
+- Camada de compatibilidade Bukkit para armor stands, itens, slimes, títulos, action bar, tablist e eventos de holograma.
+- Primeira implementação de NPCs de cliente com ProtocolLib, incluindo perfil/skin, tablist e uma movimentação simples pelo Bukkit.
+- Removida a exigência rígida de PlaceholderAPI 2.10.5. O plugin declara dependência de ProtocolLib e PlaceholderAPI no `plugin.yml`.
+- Workflows de validação e release migrados para JDK 21.
+- As configurações MySQL/TLS e a refatoração de persistência preexistentes foram preservadas.
 
-## Evidências e validação
+## Limites e validação pendente
 
-- Commits publicados e diff remoto conferidos na branch de revisão.
-- A compilação Gradle neste ambiente de edição **não foi executada**. Foi adicionado um workflow do GitHub Actions que gera os artefatos Spigot 1.8.8 e executa o Wrapper/testes; o resultado precisa ser consultado antes de considerar a validação concluída.
-- Os testes de integração com Spigot/Bukkit 1.8.8, NMS `v1_8_R3`, BungeeCord, MySQL e migração de dados não foram executados; testes unitários da ferramenta offline foram adicionados ao workflow.
-- O `pom.xml` permanece temporariamente para referência/rollback até que o build Gradle possa ser validado. Ele ainda precisa ser eliminado conforme o plano original.
+- O workflow do GitHub Actions está sendo usado para executar o build. Um job em andamento ou cancelado não é evidência de compilação aprovada; registre aqui o resultado final após o pipeline concluir.
+- Os NPCs agora usam uma entidade Bukkit como suporte e ProtocolLib para mostrá-la como jogador no cliente. A movimentação é simplificada e não equivale ao pathfinding interno de NMS.
+- Recursos como animações, step height, injeção no mundo, tablist, skins e refresh de jogador que antes dependiam de NMS privado precisam de testes funcionais específicos.
+- O repositório `alexvoliveira/Spigot-1.21.1` fornece API Bukkit, não o código interno CraftBukkit/NMS. Não se deve afirmar compatibilidade binária com internals da versão a partir dessa source.
+- A fork atual de ProtocolLib está configurada para uma versão mais recente do Minecraft e Java 25; a dependência de compilação está pinada em ProtocolLib 5.4.0. Use a fork em runtime apenas depois de validar compatibilidade com 1.21.1.
+- `pom.xml` continua temporariamente para referência até o build Gradle estar aprovado. Ele ainda contém dados antigos de Spigot 1.8.8, PAPI/ProtocolLib antigos e caminho absoluto local; não use Maven para produzir o JAR desta branch.
 
-## Pendências que bloqueiam a conclusão
+## Checklist antes de produção
 
-1. Executar `./gradlew clean build` em ambiente com JDK/Gradle compatíveis e artefatos corretos de Spigot 1.8.8/NMS e BungeeCord 1.8.
-2. Validar o importador com backups representativos, comparando contagens, perfis, títulos, boosters e amostras de estatísticas.
-3. Revisar atomicidade, erro em escritas assíncronas, fechamento do executor e concorrência de `Profile`/fila.
-4. Testar ciclo de vida de pré-login, entrada/saída, salvamento, transferência de servidores e desligamento.
-5. Confirmar o resultado do workflow de build/testes; um job em execução não conta como validação aprovada.
-6. Remover o `pom.xml` e os resíduos de build antigos somente após a validação do Gradle.
-6. Fazer revisão final de referências remanescentes, SQL dinâmico e compatibilidade de APIs antigas.
+1. Obter `BUILD SUCCESSFUL` no workflow para o HEAD atual da branch.
+2. Confirmar a existência de `build/libs/mCore.jar`.
+3. Testar inicialização/desligamento com Spigot 1.21.1, ProtocolLib e PlaceholderAPI instalados.
+4. Testar NPCs com e sem skin, navegação, entrada/saída de jogadores, tablist, interação e remoção.
+5. Testar hologramas de texto, toque e item, incluindo unload/load de chunks e prevenção de coleta.
+6. Testar o banco, TLS Aiven, persistência de perfis e o plugin Bungee separado.
+7. Só após isso remover o `pom.xml` legado e realizar revisão final das referências de API antiga.
 
 A branch ainda não foi mesclada a `main`.

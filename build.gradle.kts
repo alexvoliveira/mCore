@@ -13,7 +13,6 @@ java {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven { url = uri("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") }
     maven { url = uri("https://repo.md-5.net/content/repositories/snapshots/") }
@@ -22,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("org.spigotmc:spigot:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.21.1-R0.1-SNAPSHOT")
     compileOnly("net.md-5:bungeecord-api:1.21-R0.2")
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     compileOnly("me.clip:placeholderapi:2.12.3")
