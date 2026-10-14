@@ -29,6 +29,9 @@ public interface INMS {
   ISlime createSlime(Location location, HologramLine line);
 
   Hologram getHologram(Entity entity);
+  HologramLine getHologramLine(Entity entity);
+
+  boolean isHologramItem(Entity entity);
 
   Hologram getPreHologram(int entityId);
 

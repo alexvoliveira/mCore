@@ -19,6 +19,8 @@ import tk.slicecollections.maxteer.libraries.npclib.api.metadata.SimpleMetadataS
 import tk.slicecollections.maxteer.libraries.npclib.api.npc.NPC;
 import tk.slicecollections.maxteer.libraries.npclib.api.npc.NPCAnimation;
 import tk.slicecollections.maxteer.libraries.npclib.npc.skin.SkinnableEntity;
+import tk.slicecollections.maxteer.libraries.npclib.npc.skin.Skin;
+import tk.slicecollections.maxteer.hook.protocollib.NPCAdapter;
 import tk.slicecollections.maxteer.libraries.npclib.trait.CurrentLocation;
 import tk.slicecollections.maxteer.libraries.npclib.trait.NPCTrait;
 import tk.slicecollections.maxteer.nms.NMS;
@@ -38,6 +40,7 @@ public class AbstractNPC implements NPC {
   private EntityController controller;
 
   private MetadataStore data;
+  private Skin skin;
   private Map<Class<? extends NPCTrait>, NPCTrait> traits;
 
   public AbstractNPC(UUID uuid, String name, EntityController controller) {
@@ -195,6 +198,19 @@ public class AbstractNPC implements NPC {
   }
 
   @Override
+  public void setSkin(Skin skin) {
+    this.skin = skin;
+    if (isSpawned()) {
+      NPCAdapter.refreshNPC(this);
+    }
+  }
+
+  @Override
+  public Skin getSkin() {
+    return skin;
+  }
+
+  @Override
   public void playAnimation(NPCAnimation animation) {
     Preconditions.checkState(isSpawned(), "O npc nao esta spawnado!");
     NMS.playAnimation(this.getEntity(), animation);
@@ -261,7 +277,7 @@ public class AbstractNPC implements NPC {
 
   @Override
   public void setLaying(boolean laying) {
-    this.laying = true;
+    this.laying = laying;
   }
 
   @SuppressWarnings("unchecked")

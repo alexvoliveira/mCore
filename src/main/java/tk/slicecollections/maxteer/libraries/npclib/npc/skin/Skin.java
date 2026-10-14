@@ -3,6 +3,7 @@ package tk.slicecollections.maxteer.libraries.npclib.npc.skin;
 import tk.slicecollections.maxteer.libraries.profile.Mojang;
 import tk.slicecollections.maxteer.libraries.profile.InvalidMojangException;
 import tk.slicecollections.maxteer.nms.NMS;
+import tk.slicecollections.maxteer.libraries.npclib.api.npc.NPC;
 
 /**
  * @author Maxter
@@ -37,6 +38,20 @@ public class Skin {
 
   public void apply(SkinnableEntity entity) {
     NMS.setValueAndSignature(entity.getEntity(), value, signature);
+  }
+
+  public void apply(NPC npc) {
+    if (npc != null) {
+      npc.setSkin(this);
+    }
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public String getSignature() {
+    return signature;
   }
 
   public static Skin fromName(String name) {

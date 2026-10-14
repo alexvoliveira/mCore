@@ -1,7 +1,7 @@
-name: Legacy build validation
+name: mCore - JDK 21 / Spigot 1.21.1 validation
 
 concurrency:
-  group: legacy-build-validation-${{ github.ref }}
+  group: mcore-spigot-1211-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -24,30 +24,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 8
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "8"
+          java-version: "21"
           cache: gradle
 
-      - name: Build Spigot 1.8.8 API/NMS artifacts
+      - name: Build Spigot 1.21.1 API/NMS artifacts
         uses: SpraxDev/Action-SpigotMC@v5
         with:
-          versions: "1.8.8"
+          versions: "1.21.1"
           generateSrc: false
           generateDoc: false
 
-      - name: Validate MongoDB export importer
+      - name: Validate offline data importer
         run: python3 -m unittest discover -s tests -v
 
       - name: Compile and package with Gradle Wrapper
         run: ./gradlew --no-daemon clean build
 
+      - name: Verify generated JAR
+        run: test -s build/libs/mCore.jar
+
       - name: Upload mCore plugin JAR
         uses: actions/upload-artifact@v4
         with:
-          name: mCore-jar
+          name: mCore-1.21.1-jar
           path: build/libs/mCore.jar
           if-no-files-found: error
           retention-days: 7

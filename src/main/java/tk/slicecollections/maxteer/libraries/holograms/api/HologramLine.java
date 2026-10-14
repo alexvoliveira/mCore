@@ -56,64 +56,77 @@ public class HologramLine {
 
   public void setTouchable(TouchHandler touch) {
     if (touch == null) {
-      this.slime.killEntity();
-      this.slime = null;
+      if (this.slime != null) {
+        this.slime.killEntity();
+        this.slime = null;
+      }
       this.touch = null;
       return;
     }
 
     if (armor != null) {
       this.slime = slime == null ? NMS.createSlime(location, this) : slime;
-
       if (this.slime != null) {
         this.slime.setPassengerOf(this.armor.getEntity());
       }
-
       this.touch = touch;
     }
   }
 
   public void setItem(ItemStack item, PickupHandler pickup) {
     if (pickup == null) {
-      this.item.killEntity();
-      this.item = null;
+      if (this.item != null) {
+        this.item.killEntity();
+        this.item = null;
+      }
       this.pickup = null;
       return;
     }
 
     if (armor != null) {
-      this.item = this.item == null ? NMS.createItem(location, item, this) : this.item;
+      if (this.item == null) {
+        this.item = NMS.createItem(location, item, this);
+      } else {
+        this.item.setItemStack(item);
+      }
 
       if (this.item != null) {
         this.item.setPassengerOf(this.armor.getEntity());
       }
-
       this.pickup = pickup;
     }
   }
 
   public void setLocation(Location location) {
+    if (location == null) {
+      return;
+    }
+    this.location = location.clone();
     if (this.armor != null) {
       this.armor.setLocation(location.getX(), location.getY(), location.getZ());
       if (this.slime != null) {
         this.slime.setPassengerOf(this.armor.getEntity());
       }
+      if (this.item != null) {
+        this.item.setPassengerOf(this.armor.getEntity());
+      }
     }
   }
 
   public void setLine(String line) {
-    if (this.line.equals(StringUtils.formatColors(line))) {
-      this.armor.setName(this.line + "§r");
-      this.line = this.line + "§r";
+    String formatted = StringUtils.formatColors(line);
+    if (formatted.equals(this.line)) {
+      if (this.armor != null) {
+        this.armor.setName(formatted);
+      }
       return;
     }
 
-    this.line = StringUtils.formatColors(line);
+    this.line = formatted;
     if (armor == null) {
       if (hologram.isSpawned()) {
         this.spawn();
       }
-
       return;
     }
 

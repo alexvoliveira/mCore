@@ -1,4 +1,4 @@
-name: mCore 4.1 - Build and Release
+name: mCore - Build and Release
 
 on:
   push:
@@ -24,21 +24,21 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up Java 8
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "8"
+          java-version: "21"
           cache: gradle
 
-      - name: Prepare Spigot 1.8.8 API and NMS
+      - name: Prepare Spigot 1.21.1 API/NMS
         uses: SpraxDev/Action-SpigotMC@v5
         with:
-          versions: "1.8.8"
+          versions: "1.21.1"
           generateSrc: false
           generateDoc: false
 
-      - name: Run importer tests
+      - name: Run offline data importer tests
         run: python3 -m unittest discover -s tests -v
 
       - name: Build and package shaded plugin
@@ -48,13 +48,12 @@ jobs:
         shell: bash
         run: |
           test -s build/libs/mCore.jar
-          echo "Generated JAR:"
           ls -lh build/libs/mCore.jar
 
       - name: Upload mCore artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mCore-jar
+          name: mCore-1.21.1-jar
           path: build/libs/mCore.jar
           if-no-files-found: error
           retention-days: 14
@@ -88,7 +87,7 @@ jobs:
       - name: Download built JAR
         uses: actions/download-artifact@v4
         with:
-          name: mCore-jar
+          name: mCore-1.21.1-jar
           path: dist
 
       - name: Generate SHA-256 checksum

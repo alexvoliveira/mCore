@@ -1,205 +1,141 @@
 package tk.slicecollections.maxteer.libraries;
 
-import com.google.common.base.Objects;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 
-import static java.lang.Integer.parseInt;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * @author Maxter
+ * Minecraft server version parsed from a Bukkit version or legacy package name.
  */
-public class MinecraftVersion {
+public final class MinecraftVersion {
 
-  private int major;
-  private int minor;
-  private int build;
-  private int compareId;
+    private static final Pattern LEGACY = Pattern.compile("^v?(\\d+)[._](\\d+)[._]R(\\d+)$");
+    private static final Pattern SEMANTIC = Pattern.compile("^(?:v)?(\\d+)\\.(\\d+)(?:\\.(\\d+))?");
 
-  /**
-   * Cria uma versão através do atual servidor<br/>
-   * que pode ser pego através do {@link Bukkit#getServer()}
-   *
-   * @param server Um servidor bukkit {@link Server}
-   */
-  public MinecraftVersion(Server server) {
-    this(extractVersion(server));
-  }
+    private final int major;
+    private final int minor;
+    private final int build;
+    private final int compareId;
 
-  /**
-   * Cria uma versão através da build do servidor.<br/>
-   * Exemplo de build: 1.8.R3
-   *
-   * @param version A build do servidor.
-   */
-  public MinecraftVersion(String version) {
-    int[] numbers = parseVersion(version);
-    this.major = numbers[0];
-    this.minor = numbers[1];
-    this.build = numbers[2];
-    this.compareId = parseInt(this.major + "" + this.minor + "" + this.build);
-  }
-
-  /**
-   * Cria uma versão através dos números de build.<br/>
-   * Exemplo: 1.8.R3<br/>
-   * major: 1
-   * minor: 8
-   * build: 3
-   *
-   * @param major A major da versão (1)
-   * @param minor A minor da versão (1.X)
-   * @param build A build da versão (1.8.R"X")
-   */
-  public MinecraftVersion(int major, int minor, int build) {
-    this.major = major;
-    this.minor = minor;
-    this.build = build;
-    this.compareId = parseInt(major + "" + minor + "" + build);
-  }
-
-  /**
-   * Verifique se essa versão é menos recente ou igual a requisitada.
-   *
-   * @param version A versão para comparar.
-   * @return TRUE se for menos recente ou igual, FALSE se for mais recente.
-   */
-  public boolean lowerThan(MinecraftVersion version) {
-    return this.compareId <= version.getCompareId();
-  }
-
-  /**
-   * Verifique se essa versão é mais recente ou igual  a requisitada.
-   *
-   * @param version A versão para comparar.
-   * @return TRUE se for mais recente ou igual, FALSE se for menos recente.
-   */
-  public boolean newerThan(MinecraftVersion version) {
-    return this.compareId >= version.getCompareId();
-  }
-
-  /**
-   * Verifique se essa versão é menos recente ou igual a @param latest e<br/>
-   * se é mais recente ou igual a @param olded.
-   *
-   * @param latest A versão que precisa que ser menos recente ou igual a atual.
-   * @param olded  A versão que precisa ser mais recente ou igual a atual.
-   * @return TRUE se as duas condições forem cumpridas, FALSE caso não forem.
-   */
-  public boolean inRange(MinecraftVersion latest, MinecraftVersion olded) {
-    return (this.compareId <= latest.getCompareId()) && (this.compareId >= olded.getCompareId());
-  }
-
-  /**
-   * Pega o valor Major da versão.
-   *
-   * @return Major númerico
-   */
-  public int getMajor() {
-    return this.major;
-  }
-
-  /**
-   * Pega o valor Minor da versão.
-   *
-   * @return Minor númerico
-   */
-  public int getMinor() {
-    return this.minor;
-  }
-
-  /**
-   * Pega o valor Build da versão.
-   *
-   * @return Build númerico
-   */
-  public int getBuild() {
-    return this.build;
-  }
-
-  /**
-   * Pega o valor de comparação da versão.<br/>
-   * Exemplo: 1.8.R3
-   * ID de comparação: 183
-   *
-   * @return Valor de comparação
-   */
-  public int getCompareId() {
-    return this.compareId;
-  }
-
-  private int[] parseVersion(String version) {
-    String[] elements = version.split("\\.");
-    int[] numbers = new int[3];
-
-    if (elements.length <= 1 || version.split("R").length < 1) {
-      throw new IllegalStateException("Corrupt MC Server version: " + version);
+    public MinecraftVersion(Server server) {
+        this(extractVersion(server));
     }
 
-    for (int i = 0; i < 2; i++) {
-      numbers[i] = parseInt(elements[i]);
+    public MinecraftVersion(String version) {
+        int[] numbers = parseVersion(version);
+        this.major = numbers[0];
+        this.minor = numbers[1];
+        this.build = numbers[2];
+        this.compareId = Integer.parseInt(Integer.toString(major) + minor + build);
     }
 
-    numbers[2] = parseInt(version.split("R")[1]);
-    return numbers;
-  }
-
-  /**
-   * Retorna a versão em seu estado inicial (package build).<br/>
-   * Exemplo: 1_8_R3
-   *
-   * @return Versão original.
-   */
-  public String getVersion() {
-    return String.format("v%s_%s_R%s", this.major, this.minor, this.build);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof MinecraftVersion)) {
-      return false;
-    }
-    if (obj == this) {
-      return true;
+    public MinecraftVersion(int major, int minor, int build) {
+        this.major = major;
+        this.minor = minor;
+        this.build = build;
+        this.compareId = Integer.parseInt(Integer.toString(major) + minor + build);
     }
 
-    MinecraftVersion other = (MinecraftVersion) obj;
-    return this.getMajor() == other.getMajor() && this.getMinor() == other.getMinor() && this.getBuild() == other.getBuild();
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hashCode(this.getMajor(), this.getMinor(), this.getBuild());
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s", this.getVersion());
-  }
-
-  private static String extractVersion(Server server) {
-    return extractVersion(server.getClass().getPackage().getName().split("\\.")[3]);
-  }
-
-  private static String extractVersion(String version) {
-    return version.replace('_', '.').replace("v", "");
-  }
-
-  /**
-   * Versão atual
-   */
-  private static MinecraftVersion currentVersion;
-
-  /**
-   * Pega a versão do servidor que está atualmente rodando.
-   *
-   * @return A versão do servidor representada por um {@link MinecraftVersion}.
-   */
-  public static MinecraftVersion getCurrentVersion() {
-    if (currentVersion == null) {
-      currentVersion = new MinecraftVersion(Bukkit.getServer());
+    public boolean lowerThan(MinecraftVersion version) {
+        return compareTo(version) <= 0;
     }
 
-    return currentVersion;
-  }
+    public boolean newerThan(MinecraftVersion version) {
+        return compareTo(version) >= 0;
+    }
+
+    public boolean inRange(MinecraftVersion latest, MinecraftVersion olded) {
+        return compareTo(latest) <= 0 && compareTo(olded) >= 0;
+    }
+
+    private int compareTo(MinecraftVersion other) {
+        int result = Integer.compare(major, other.major);
+        if (result == 0) result = Integer.compare(minor, other.minor);
+        if (result == 0) result = Integer.compare(build, other.build);
+        return result;
+    }
+
+    public int getMajor() { return major; }
+    public int getMinor() { return minor; }
+    public int getBuild() { return build; }
+    public int getCompareId() { return compareId; }
+
+    /**
+     * Retains the legacy package-style representation used by existing callers.
+     * For Minecraft 1.21.1 this returns v1_21_R1.
+     */
+    public String getVersion() {
+        return String.format("v%s_%s_R%s", major, minor, build);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof MinecraftVersion)) return false;
+        MinecraftVersion other = (MinecraftVersion) obj;
+        return major == other.major && minor == other.minor && build == other.build;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(major, minor, build);
+    }
+
+    @Override
+    public String toString() {
+        return getVersion();
+    }
+
+    private static String extractVersion(Server server) {
+        String packageName = server.getClass().getPackage().getName();
+        String[] packageParts = packageName.split("\\.");
+        if (packageParts.length > 3 && LEGACY.matcher(packageParts[3]).matches()) {
+            return packageParts[3];
+        }
+
+        String bukkitVersion = server.getBukkitVersion();
+        if (bukkitVersion != null && SEMANTIC.matcher(bukkitVersion).find()) {
+            return bukkitVersion;
+        }
+        throw new IllegalStateException("Cannot determine Minecraft version from server: " + packageName);
+    }
+
+    private static int[] parseVersion(String version) {
+        if (version == null) {
+            throw new IllegalStateException("Minecraft version cannot be null");
+        }
+
+        String candidate = version.trim();
+        Matcher legacy = LEGACY.matcher(candidate);
+        if (legacy.matches()) {
+            return new int[] {
+                Integer.parseInt(legacy.group(1)),
+                Integer.parseInt(legacy.group(2)),
+                Integer.parseInt(legacy.group(3))
+            };
+        }
+
+        Matcher semantic = SEMANTIC.matcher(candidate);
+        if (semantic.find()) {
+            return new int[] {
+                Integer.parseInt(semantic.group(1)),
+                Integer.parseInt(semantic.group(2)),
+                semantic.group(3) == null ? 0 : Integer.parseInt(semantic.group(3))
+            };
+        }
+
+        throw new IllegalStateException("Unsupported Minecraft server version: " + version);
+    }
+
+    private static MinecraftVersion currentVersion;
+
+    public static MinecraftVersion getCurrentVersion() {
+        if (currentVersion == null) {
+            currentVersion = new MinecraftVersion(Bukkit.getServer());
+        }
+        return currentVersion;
+    }
 }

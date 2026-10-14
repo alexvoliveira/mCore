@@ -6,6 +6,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.event.HandlerList;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import tk.slicecollections.maxteer.libraries.npclib.api.EntityController;
@@ -19,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Maxter
@@ -28,6 +32,7 @@ public class NPCLibrary {
   private static Plugin plugin;
   private static Listener LISTENER;
   private static final List<NPC> NPCS = new ArrayList<>();
+  private static final Map<Integer, NPC> ENTITY_NPCS = new ConcurrentHashMap<>();
 
   public static void setupNPCs(MPlugin pl) {
     if (pl == null || plugin != null) {
@@ -55,6 +60,7 @@ public class NPCLibrary {
 
   public static void unregister(NPC npc) {
     NPCS.remove(npc);
+    ENTITY_NPCS.values().removeIf(candidate -> candidate == npc);
     if (LISTENER instanceof NPCListeners) {
       ((NPCListeners) LISTENER).removeNPC(npc);
     }
@@ -73,6 +79,7 @@ public class NPCLibrary {
       LISTENER = null;
     }
     NPCS.clear();
+    ENTITY_NPCS.clear();
     plugin = null;
   }
 
@@ -81,7 +88,39 @@ public class NPCLibrary {
   }
 
   public static NPC getNPC(Entity entity) {
-    return entity instanceof NPCHolder ? ((NPCHolder) entity).getNPC() : null;
+    if (entity == null) {
+      return null;
+    }
+    if (entity instanceof NPCHolder) {
+      return ((NPCHolder) entity).getNPC();
+    }
+    for (MetadataValue value : entity.getMetadata("NPC")) {
+      Object stored = value.value();
+      if (stored instanceof NPC) {
+        return (NPC) stored;
+      }
+    }
+    return ENTITY_NPCS.get(entity.getEntityId());
+  }
+
+  public static NPC findNPCByEntityId(int entityId) {
+    return ENTITY_NPCS.get(entityId);
+  }
+
+  public static void bindEntity(Entity entity, NPC npc) {
+    if (entity == null || npc == null) {
+      return;
+    }
+    ENTITY_NPCS.put(entity.getEntityId(), npc);
+    if (plugin != null) {
+      entity.setMetadata("NPC", new FixedMetadataValue(plugin, npc));
+    }
+  }
+
+  public static void unbindEntity(Entity entity) {
+    if (entity != null) {
+      ENTITY_NPCS.remove(entity.getEntityId());
+    }
   }
 
   public static NPC findNPC(UUID uuid) {

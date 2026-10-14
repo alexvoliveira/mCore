@@ -1,10 +1,14 @@
 # mCore
- Compilado de funções para plugins de Minecraft.
 
-## Refatoração em andamento
+Biblioteca de funções compartilhadas para os plugins da rede SliceCollections.
 
-A branch `refactor/stage1-security-gradle` traz uma etapa inicial de hardening de segurança e preparação de build Gradle. Ela não é uma refatoração completa nem está pronta para produção. Veja [docs/EXECUTION-STATUS.md](docs/EXECUTION-STATUS.md), [docs/BUILD.md](docs/BUILD.md) e [docs/DATA-MIGRATION.md](docs/DATA-MIGRATION.md) antes de compilar ou implantar.
+## Plataforma desta branch
 
-## Refatoração em andamento
+Esta branch migra o build do mCore para **JDK 21 e Spigot 1.21.1**. O artefato de produção é gerado pelo Gradle Wrapper com `build/libs/mCore.jar`.
 
-A branch `refactor/stage1-security-gradle` consolida a persistência de produção em MySQL/HikariCP e inclui uma ferramenta offline para importar backups JSONL de MongoDB. A refatoração ainda não está validada por um build completo; consulte [docs/EXECUTION-STATUS.md](docs/EXECUTION-STATUS.md), [docs/BUILD.md](docs/BUILD.md) e [docs/DATA-MIGRATION.md](docs/DATA-MIGRATION.md).
+- Branch de migração: `refactor/jdk21-spigot-1.21.1`
+- Compatibilidade de API: Spigot 1.21.1
+- Dependências de integração: ProtocolLib e PlaceholderAPI
+- A implementação NMS antiga de 1.8 foi isolada da compilação; a camada atual utiliza Bukkit e ProtocolLib.
+
+A migração deve ser considerada validada somente após o workflow do GitHub Actions compilar o artefato e após testes em um servidor de teste com as versões reais das dependências. A conclusão do build, isoladamente, não substitui os testes de NPCs, skins, hologramas, banco de dados e desligamento.

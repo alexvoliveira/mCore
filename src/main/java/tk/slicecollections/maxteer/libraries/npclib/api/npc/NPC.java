@@ -6,6 +6,7 @@ import tk.slicecollections.maxteer.libraries.npclib.api.metadata.MetadataStore;
 import tk.slicecollections.maxteer.libraries.npclib.trait.NPCTrait;
 
 import java.util.UUID;
+import tk.slicecollections.maxteer.libraries.npclib.npc.skin.Skin;
 
 /**
  * @author Maxter
@@ -24,6 +25,10 @@ public interface NPC {
   MetadataStore data();
 
   void playAnimation(NPCAnimation animation);
+
+  void setSkin(Skin skin);
+
+  Skin getSkin();
 
   void addTrait(NPCTrait trait);
 

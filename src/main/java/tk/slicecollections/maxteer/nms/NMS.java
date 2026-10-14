@@ -4,6 +4,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
@@ -17,7 +18,9 @@ import tk.slicecollections.maxteer.nms.interfaces.INMS;
 import tk.slicecollections.maxteer.nms.interfaces.entity.IArmorStand;
 import tk.slicecollections.maxteer.nms.interfaces.entity.IItem;
 import tk.slicecollections.maxteer.nms.interfaces.entity.ISlime;
-import tk.slicecollections.maxteer.nms.v1_8_R3.NMS1_8R3;
+import tk.slicecollections.maxteer.nms.v1_21_R1.HumanController;
+import tk.slicecollections.maxteer.nms.v1_21_R1.NMS1_21_R1;
+import tk.slicecollections.maxteer.libraries.npclib.npc.EntityControllers;
 import tk.slicecollections.maxteer.plugin.logger.MLogger;
 
 import java.util.Collection;
@@ -44,6 +47,14 @@ public class NMS {
 
   public static Hologram getHologram(Entity entity) {
     return BRIDGE.getHologram(entity);
+  }
+
+  public static HologramLine getHologramLine(Entity entity) {
+    return BRIDGE.getHologramLine(entity);
+  }
+
+  public static boolean isHologramItem(Entity entity) {
+    return BRIDGE.isHologramItem(entity);
   }
 
   public static Hologram getPreHologram(int entityId) {
@@ -143,8 +154,10 @@ public class NMS {
   }
 
   public static boolean setupNMS() {
-    if (MinecraftVersion.getCurrentVersion().getCompareId() == 183) {
-      BRIDGE = new NMS1_8R3();
+    MinecraftVersion version = MinecraftVersion.getCurrentVersion();
+    if (version.getMajor() == 1 && version.getMinor() == 21 && version.getBuild() == 1) {
+      BRIDGE = new NMS1_21_R1();
+      EntityControllers.registerEntityController(EntityType.PLAYER, HumanController.class);
       return true;
     }
 
