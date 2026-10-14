@@ -28,3 +28,12 @@ A API Bukkit não expõe algumas operações internas usadas pela implementaçã
 3. Criar NPCs com e sem skin; testar entrada/saída de jogadores, teleporte, navegação, interação, visibilidade de tablist e remoção.
 4. Criar hologramas de texto, toque e item; testar movimento, respawn após descarregar chunks e prevenção de coleta de itens decorativos.
 5. Testar banco de dados e persistência de perfis separadamente da migração de API.
+
+## Revisão das APIs legadas
+
+- A varredura da árvore ativa encontrou 192 arquivos Java no source set (os 20 arquivos em `nms/v1_8_R3` ficam excluídos). Não há imports diretos de `net.minecraft.*` ou `org.bukkit.craftbukkit.*` nesses arquivos ativos; alguns utilitários ainda mantêm reflexão por nome de classe e não fazem parte do caminho principal da ponte `NMS1_21_R1`.
+- `ParticleEffect.ParticlePacket` foi migrado de construção/reflexão de pacotes NMS para `Player.spawnParticle` do Bukkit. Isso elimina a dependência de nomes internos versionados para o envio de partículas. Os nomes antigos que não possuem equivalência pública direta (`FOOTSTEP` e `ITEM_TAKE`) são tratados como não suportados; partículas de bloco/item usam os tipos públicos modernos, então o byte de dados legado não é preservado universalmente.
+- `BukkitUtils.asNMSCopy`, `BukkitUtils.asCraftMirror`, `MinecraftReflection` e `ReflectionUtils.PackageType` ainda representam utilitários de compatibilidade legado. Se algum consumidor chamar essas rotinas diretamente, a ausência de um pacote CraftBukkit versionado pode torná-las incompatíveis. O caminho atual de `NMS1_21_R1` não deve passar por elas.
+- As interfaces públicas `INMS`, `IArmorStand`, `IItem` e `ISlime` foram mantidas. Algumas operações que exigiam acesso a internals — substituição do tracker, step height e lógica de movimento de voo — não têm implementação equivalente na API Bukkit pública e permanecem sem efeito na ponte nova.
+- O CI valida compilação, empacotamento e importador de dados; ele não substitui testes em servidor real. Em particular, NPCs, skins, pacotes de tablist, colisões/navegação, hologramas e unload/reload de chunks ainda precisam de smoke tests com Spigot 1.21.1 e o JAR exato de ProtocolLib instalado.
+
