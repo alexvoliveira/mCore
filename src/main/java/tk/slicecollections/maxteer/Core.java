@@ -9,7 +9,6 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketListener;
 import com.henryfabio.minecraft.inventoryapi.manager.InventoryManager;
 import me.clip.placeholderapi.PlaceholderAPI;
-import me.clip.placeholderapi.PlaceholderAPIPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -54,7 +53,7 @@ import java.util.Map;
 import java.util.logging.Level;
 
 /**
- * @author Maxter
+ * @author Maxteer
  */
 @SuppressWarnings("unchecked")
 public class Core extends MPlugin {
@@ -80,7 +79,7 @@ public class Core extends MPlugin {
   @Override
   public void enable() {
     if (!NMS.setupNMS()) {
-      this.getLogger().warning("§4§lVERSÃO INCOMPATÍVEL §7O mCore requer Spigot 1.8_R3 (detectada: " + MinecraftVersion.getCurrentVersion().getVersion() + ").");
+      this.getLogger().warning("§4§lVERSÃO INCOMPATÍVEL §7O mCore ainda não possui um adaptador NMS para " + MinecraftVersion.getCurrentVersion().getVersion() + ".");
       Bukkit.getPluginManager().disablePlugin(this);
       return;
     }
@@ -129,12 +128,6 @@ public class Core extends MPlugin {
       knownCommands.remove("bukkit:reload");
     } catch (ReflectiveOperationException ex) {
       getLogger().log(Level.SEVERE, "Cannot remove reload command: ", ex);
-    }
-
-    if (!PlaceholderAPIPlugin.getInstance().getDescription().getVersion().equals("2.10.5")) {
-      Bukkit.getConsoleSender().sendMessage(MessageUtils.critical("DEPENDÊNCIA INVÁLIDA", "É necessário PlaceholderAPI 2.10.5; versão encontrada: " + PlaceholderAPIPlugin.getInstance().getDescription().getVersion() + "."));
-      Bukkit.getPluginManager().disablePlugin(this);
-      return;
     }
 
     this.expansion = new MCoreExpansion();
@@ -275,7 +268,6 @@ public class Core extends MPlugin {
   @Getter
   @Setter
   private static Location lobby;
-
 
   public static void sendServer(Profile profile, String name) {
     if (!Core.getInstance().isEnabled()) {
