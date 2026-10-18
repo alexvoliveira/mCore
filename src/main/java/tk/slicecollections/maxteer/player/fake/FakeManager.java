@@ -44,7 +44,7 @@ public class FakeManager {
       CONFIG.set("fake.role", Arrays.asList(CONFIG.getString("fake.role")));
     }
     FAKE_ROLES = new TextComponent("");
-    for (BaseComponent component : TextComponent.fromLegacyText("§a§lALTERAR NICKNAME\n\n§7Escolha o cargo que deseja utilizar enquanto estiver disfarçado:\n )) {
+    for (BaseComponent component : TextComponent.fromLegacyText("§a§lALTERAR NICKNAME\n\n§7Escolha o cargo que deseja utilizar enquanto estiver disfarçado:\n")) {
       FAKE_ROLES.addExtra(component);
     }
     for (String roleName : CONFIG.getStringList("fake.role")) {
@@ -57,7 +57,7 @@ public class FakeManager {
       }
     }
     FAKE_SKINS = new TextComponent("");
-    for (BaseComponent component : TextComponent.fromLegacyText("§a§lALTERAR NICKNAME\n\n§7Enquanto estiver disfarçado, sua skin será alterada.\n\n§7Escolha uma skin:\n )) {
+    for (BaseComponent component : TextComponent.fromLegacyText("§a§lALTERAR NICKNAME\n\n§7Enquanto estiver disfarçado, sua skin será alterada.\n\n§7Escolha uma skin:\n")) {
       FAKE_SKINS.addExtra(component);
     }
     TextComponent STEVE = new TextComponent("\n §7• §fSteve");
