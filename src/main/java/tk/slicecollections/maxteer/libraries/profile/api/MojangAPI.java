@@ -14,17 +14,17 @@ import java.net.URLConnection;
  */
 public class MojangAPI extends Mojang {
 
-  private boolean response;
+  private final ThreadLocal<Boolean> response = ThreadLocal.withInitial(() -> false);
 
   @Override
   public String fetchId(String name) {
-    this.response = false;
+    this.response.set(false);
     try {
       URLConnection conn = new URL("https://api.mojang.com/users/profiles/minecraft/" + name).openConnection();
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-      this.response = true;
+      this.response.set(true);
       StringBuilder builder = new StringBuilder();
       String read;
       while ((read = reader.readLine()) != null) {
@@ -38,13 +38,13 @@ public class MojangAPI extends Mojang {
 
   @Override
   public String fetchSkinProperty(String id) {
-    this.response = false;
+    this.response.set(false);
     try {
       URLConnection conn = new URL("https://sessionserver.mojang.com/session/minecraft/profile/" + id + "?unsigned=false").openConnection();
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-      this.response = true;
+      this.response.set(true);
       StringBuilder builder = new StringBuilder();
       String read;
       while ((read = reader.readLine()) != null) {
@@ -66,6 +66,6 @@ public class MojangAPI extends Mojang {
 
   @Override
   public boolean getResponse() {
-    return response;
+    return response.get();
   }
 }

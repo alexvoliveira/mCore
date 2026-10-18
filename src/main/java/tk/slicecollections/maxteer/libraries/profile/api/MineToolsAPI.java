@@ -14,27 +14,27 @@ import java.net.URLConnection;
  */
 public class MineToolsAPI extends Mojang {
 
-  private boolean response;
+  private final ThreadLocal<Boolean> response = ThreadLocal.withInitial(() -> false);
 
   @Override
   public String fetchId(String name) {
-    this.response = false;
+    this.response.set(false);
     try {
       URLConnection conn = new URL("https://api.minetools.eu/uuid/" + name).openConnection();
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-      this.response = true;
+      this.response.set(true);
       StringBuilder builder = new StringBuilder();
       String read;
       while ((read = reader.readLine()) != null) {
         builder.append(read);
       }
       if (builder.toString().contains("Invalid UUID or Nickname!")) {
-        this.response = true;
+        this.response.set(true);
         return null;
       } else if (builder.toString().contains("\"status\": \"OK\"")) {
-        this.response = true;
+        this.response.set(true);
         return new JsonParser().parse(builder.toString()).getAsJsonObject().get("id").getAsString();
       }
       return null;
@@ -45,13 +45,13 @@ public class MineToolsAPI extends Mojang {
 
   @Override
   public String fetchSkinProperty(String id) {
-    this.response = false;
+    this.response.set(false);
     try {
       URLConnection conn = new URL("https://api.minetools.eu/profile/" + id).openConnection();
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-      this.response = true;
+      this.response.set(true);
       StringBuilder builder = new StringBuilder();
       String read;
       while ((read = reader.readLine()) != null) {
@@ -59,7 +59,7 @@ public class MineToolsAPI extends Mojang {
       }
       String property = null;
       if (builder.toString().contains("Invalid UUID!")) {
-        this.response = true;
+        this.response.set(true);
         return null;
       }
 
@@ -76,6 +76,6 @@ public class MineToolsAPI extends Mojang {
 
   @Override
   public boolean getResponse() {
-    return response;
+    return response.get();
   }
 }

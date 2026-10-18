@@ -120,6 +120,10 @@ public final class SkinLibrary implements Listener {
     player.sendMessage(MessageUtils.info("Carregando a skin " + definition.getDisplayName() + "§7..."));
     try {
       resolver.execute(() -> {
+        // Drop stale clicks before starting any remote API requests.
+        if (!isCurrentRequest(player, request)) {
+          return;
+        }
         final Skin skin;
         try {
           skin = resolve(definition);
