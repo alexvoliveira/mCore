@@ -1,7 +1,7 @@
 package tk.slicecollections.maxteer.player.fake;
 
-import com.comphenix.protocol.wrappers.WrappedGameProfile;
-import com.comphenix.protocol.wrappers.WrappedSignedProperty;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.properties.Property;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -209,13 +209,13 @@ public class FakeManager {
     return replaced;
   }
 
-  public static WrappedGameProfile cloneProfile(WrappedGameProfile profile) {
-    WrappedGameProfile gameProfile = profile.withName(getFake(profile.getName()));
+  public static GameProfile cloneProfile(GameProfile profile) {
+    GameProfile gameProfile = new GameProfile(profile.getId(), getFake(profile.getName()));
     gameProfile.getProperties().clear();
 
     try {
-      String[] texture = FakeManager.getSkin(profile.getName()).split(":");
-      gameProfile.getProperties().put("textures", new WrappedSignedProperty("textures", texture[0], texture[1]));
+      String[] texture = getSkin(profile.getName()).split(":");
+      gameProfile.getProperties().put("textures", new Property("textures", texture[0], texture[1]));
     } catch (Exception ignore) {}
 
     return gameProfile;

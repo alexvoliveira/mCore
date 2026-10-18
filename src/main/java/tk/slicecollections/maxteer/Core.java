@@ -5,8 +5,6 @@ import tk.slicecollections.maxteer.utils.MessageUtils;
 import lombok.Getter;
 import lombok.Setter;
 
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.events.PacketListener;
 import com.henryfabio.minecraft.inventoryapi.manager.InventoryManager;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.PlaceholderAPIPlugin;
@@ -23,9 +21,10 @@ import tk.slicecollections.maxteer.cmd.Commands;
 import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.deliveries.Delivery;
 import tk.slicecollections.maxteer.hook.MCoreExpansion;
-import tk.slicecollections.maxteer.hook.protocollib.FakeAdapter;
-import tk.slicecollections.maxteer.hook.protocollib.HologramAdapter;
-import tk.slicecollections.maxteer.hook.protocollib.NPCAdapter;
+import tk.slicecollections.maxteer.nms.network.FakePacketHandler;
+import tk.slicecollections.maxteer.nms.network.HologramPacketHandler;
+import tk.slicecollections.maxteer.nms.network.NMSPacketInterceptor;
+import tk.slicecollections.maxteer.nms.network.NPCPacketHandler;
 import tk.slicecollections.maxteer.libraries.MinecraftVersion;
 import tk.slicecollections.maxteer.libraries.holograms.HologramLibrary;
 import tk.slicecollections.maxteer.libraries.npclib.NPCLibrary;
@@ -63,7 +62,6 @@ public class Core extends MPlugin {
 
   @Getter
   private static Core instance;
-  private final List<PacketListener> registeredPacketListeners = new ArrayList<>();
   private org.bukkit.scheduler.BukkitTask profileCleanupTask;
   private MCoreExpansion expansion;
   @Getter
@@ -91,6 +89,7 @@ public class Core extends MPlugin {
       return;
     }
 
+    NMSPacketInterceptor.enable(this);
     saveDefaultConfig();
     lobby = Bukkit.getWorlds().get(0).getSpawnLocation();
 
@@ -176,9 +175,9 @@ public class Core extends MPlugin {
     Commands.setupCommands();
     Listeners.setupListeners();
 
-    this.registerPacketListener(new FakeAdapter());
-    this.registerPacketListener(new NPCAdapter());
-    this.registerPacketListener(new HologramAdapter());
+    NMSPacketInterceptor.registerListener(this, new FakePacketHandler());
+    NMSPacketInterceptor.registerListener(this, new NPCPacketHandler());
+    NMSPacketInterceptor.registerListener(this, new HologramPacketHandler());
 
     getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
     getServer().getMessenger().registerOutgoingPluginChannel(this, "mCore");
@@ -186,11 +185,6 @@ public class Core extends MPlugin {
 
     validInit = true;
     this.getLogger().info("§a§lINICIADO §7com sucesso.");
-  }
-
-  private void registerPacketListener(PacketListener listener) {
-    ProtocolLibrary.getProtocolManager().addPacketListener(listener);
-    this.registeredPacketListeners.add(listener);
   }
 
   @Override
@@ -209,14 +203,7 @@ public class Core extends MPlugin {
       this.skinHistoryManager = null;
     }
 
-    for (PacketListener listener : new ArrayList<>(this.registeredPacketListeners)) {
-      try {
-        ProtocolLibrary.getProtocolManager().removePacketListener(listener);
-      } catch (RuntimeException ex) {
-        this.getLogger().log(Level.WARNING, "Could not unregister an mCore packet listener.", ex);
-      }
-    }
-    this.registeredPacketListeners.clear();
+    NMSPacketInterceptor.unregisterListeners(this);
 
     if (this.expansion != null) {
       PlaceholderAPI.unregisterExpansion(this.expansion);

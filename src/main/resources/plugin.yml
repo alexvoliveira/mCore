@@ -1,6 +1,6 @@
 author: Maxteer
 name: ${artifactId}
 version: ${version}
-depend: [ProtocolLib, PlaceholderAPI]
+depend: [PlaceholderAPI]
 
 main: ${mainBukkit}
