@@ -59,22 +59,26 @@ public final class SkinHistoryManager {
         "texture_signature = VALUES(texture_signature), selected_at = VALUES(selected_at)",
         uuid, playerName, skin.getId(), skin.getDisplayName(), skin.getOwnerName(), value, signature, now);
 
-    CompletableFuture<Void> saved = saveCurrent.thenCompose(ignored -> database.execute(
+    // Enqueue every operation immediately. The DB writer drains queued statements on shutdown;
+    // dependent thenCompose callbacks could otherwise try to enqueue after the writer has stopped.
+    CompletableFuture<Void> saveHistory = database.execute(
         "INSERT INTO mCoreSkinHistory (player_uuid, player_name, skin_id, skin_name, skin_owner, texture_value, texture_signature, used_at, expires_at) " +
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE " +
         "player_name = VALUES(player_name), skin_name = VALUES(skin_name), skin_owner = VALUES(skin_owner), " +
         "texture_value = VALUES(texture_value), texture_signature = VALUES(texture_signature), " +
         "used_at = VALUES(used_at), expires_at = VALUES(expires_at)",
-        uuid, playerName, skin.getId(), skin.getDisplayName(), skin.getOwnerName(), value, signature, now, expiresAt
-    )).thenCompose(ignored -> database.execute(
-        "DELETE FROM mCoreSkinHistory WHERE player_uuid = ? AND expires_at <= ?", uuid, now
-    )).thenCompose(ignored -> database.execute(
+        uuid, playerName, skin.getId(), skin.getDisplayName(), skin.getOwnerName(), value, signature, now, expiresAt);
+
+    CompletableFuture<Void> removeExpired = database.execute(
+        "DELETE FROM mCoreSkinHistory WHERE player_uuid = ? AND expires_at <= ?", uuid, now);
+
+    CompletableFuture<Void> trimHistory = database.execute(
         "DELETE FROM mCoreSkinHistory WHERE player_uuid = ? AND id NOT IN (" +
         "SELECT id FROM (SELECT id FROM mCoreSkinHistory WHERE player_uuid = ? AND expires_at > ? " +
         "ORDER BY used_at DESC, id DESC LIMIT 7) AS recent_skins)",
-        uuid, uuid, now
-    ));
+        uuid, uuid, now);
 
+    CompletableFuture<Void> saved = CompletableFuture.allOf(saveCurrent, saveHistory, removeExpired, trimHistory);
     saved.whenComplete((ignored, failure) -> {
       if (failure != null) {
         plugin.getLogger().log(Level.SEVERE,
