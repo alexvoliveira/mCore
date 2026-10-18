@@ -41,6 +41,8 @@ import tk.slicecollections.maxteer.plugin.config.MConfig;
 import tk.slicecollections.maxteer.queue.Queue;
 import tk.slicecollections.maxteer.queue.QueuePlayer;
 import tk.slicecollections.maxteer.servers.ServerItem;
+import tk.slicecollections.maxteer.skins.SkinHistoryManager;
+import tk.slicecollections.maxteer.skins.SkinLibrary;
 import tk.slicecollections.maxteer.titles.Title;
 import tk.slicecollections.maxteer.titles.TitleManager;
 
@@ -64,6 +66,10 @@ public class Core extends MPlugin {
   private final List<PacketListener> registeredPacketListeners = new ArrayList<>();
   private org.bukkit.scheduler.BukkitTask profileCleanupTask;
   private MCoreExpansion expansion;
+  @Getter
+  private SkinLibrary skinLibrary;
+  @Getter
+  private SkinHistoryManager skinHistoryManager;
   public static boolean validInit;
   public static final List<String> warnings = new ArrayList<>();
   public static final List<String> minigames = Arrays.asList("Sky Wars", "The Bridge", "Murder");
@@ -152,6 +158,9 @@ public class Core extends MPlugin {
     );
     this.profileCleanupTask = Bukkit.getScheduler().runTaskTimer(this,
       Profile::cleanupStalePreloadedProfiles, 1200L, 1200L);
+    this.skinHistoryManager = new SkinHistoryManager(this);
+    this.skinHistoryManager.start();
+    this.skinLibrary = new SkinLibrary(this);
 
     NPCLibrary.setupNPCs(this);
     HologramLibrary.setupHolograms(this);
@@ -189,6 +198,15 @@ public class Core extends MPlugin {
     if (this.profileCleanupTask != null) {
       this.profileCleanupTask.cancel();
       this.profileCleanupTask = null;
+    }
+
+    if (this.skinLibrary != null) {
+      this.skinLibrary.shutdown();
+      this.skinLibrary = null;
+    }
+    if (this.skinHistoryManager != null) {
+      this.skinHistoryManager.shutdown();
+      this.skinHistoryManager = null;
     }
 
     for (PacketListener listener : new ArrayList<>(this.registeredPacketListeners)) {

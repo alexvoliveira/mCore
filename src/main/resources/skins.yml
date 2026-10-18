@@ -1,0 +1,13 @@
+# Catalogue of selectable player skins.
+# Configure an online Java username as "owner", or provide BOTH signed texture fields.
+# The catalogue is loaded at startup; restart mCore after editing this file.
+skins:
+  notch:
+    display-name: "&aNotch"
+    owner: "Notch"
+  jeb_:
+    display-name: "&dJeb_"
+    owner: "jeb_"
+  dinnerbone:
+    display-name: "&eDinnerbone"
+    owner: "Dinnerbone"

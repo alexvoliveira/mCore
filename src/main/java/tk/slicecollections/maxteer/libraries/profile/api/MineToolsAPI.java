@@ -22,6 +22,7 @@ public class MineToolsAPI extends Mojang {
     try {
       URLConnection conn = new URL("https://api.minetools.eu/uuid/" + name).openConnection();
       conn.setConnectTimeout(5000);
+      conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
       this.response = true;
       StringBuilder builder = new StringBuilder();
@@ -48,6 +49,7 @@ public class MineToolsAPI extends Mojang {
     try {
       URLConnection conn = new URL("https://api.minetools.eu/profile/" + id).openConnection();
       conn.setConnectTimeout(5000);
+      conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
       this.response = true;
       StringBuilder builder = new StringBuilder();

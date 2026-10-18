@@ -44,6 +44,28 @@ final class SchemaMigrator {
           }
           record(connection, 2, "Create network booster and custom title tables");
         }
+
+        if (!isApplied(connection, 3)) {
+          try (Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE IF NOT EXISTS mCorePlayerSkin (" +
+              "player_uuid CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, " +
+              "player_name VARCHAR(16) NOT NULL, skin_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, " +
+              "skin_name VARCHAR(64) NOT NULL, skin_owner VARCHAR(16) NOT NULL, " +
+              "texture_value TEXT NOT NULL, texture_signature TEXT NOT NULL, selected_at BIGINT NOT NULL, " +
+              "PRIMARY KEY (player_uuid)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci");
+            statement.execute("CREATE TABLE IF NOT EXISTS mCoreSkinHistory (" +
+              "id BIGINT NOT NULL AUTO_INCREMENT, " +
+              "player_uuid CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, " +
+              "player_name VARCHAR(16) NOT NULL, skin_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, " +
+              "skin_name VARCHAR(64) NOT NULL, skin_owner VARCHAR(16) NOT NULL, " +
+              "texture_value TEXT NOT NULL, texture_signature TEXT NOT NULL, " +
+              "used_at BIGINT NOT NULL, expires_at BIGINT NOT NULL, " +
+              "PRIMARY KEY (id), UNIQUE KEY uq_mCoreSkinHistory_player_skin (player_uuid, skin_id), " +
+              "KEY idx_mCoreSkinHistory_expiry (expires_at), KEY idx_mCoreSkinHistory_player_used (player_uuid, used_at)) " +
+              "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci");
+          }
+          record(connection, 3, "Create persistent selected skins and expiring skin history");
+        }
       } finally {
         releaseLock(connection);
       }

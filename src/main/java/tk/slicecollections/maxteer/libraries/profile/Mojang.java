@@ -24,7 +24,7 @@ public abstract class Mojang {
   private static final List<Mojang> MOJANGAPIS;
   private static final Cache<String, String> CACHED_UUID, CACHED_PROPERTY;
 
-  public static String getUUID(String name) throws InvalidMojangException {
+  public static synchronized String getUUID(String name) throws InvalidMojangException {
     String id = CACHED_UUID.getIfPresent(name);
     if (id != null) {
       return id;
@@ -44,7 +44,7 @@ public abstract class Mojang {
     throw new InvalidMojangException("Nenhuma api conseguiu pegar o UUID pelo nome: " + name);
   }
 
-  public static String getSkinProperty(String id) throws InvalidMojangException {
+  public static synchronized String getSkinProperty(String id) throws InvalidMojangException {
     String property = CACHED_PROPERTY.getIfPresent(id);
     if (property != null) {
       return property;

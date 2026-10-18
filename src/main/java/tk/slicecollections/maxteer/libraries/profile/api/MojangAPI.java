@@ -22,6 +22,7 @@ public class MojangAPI extends Mojang {
     try {
       URLConnection conn = new URL("https://api.mojang.com/users/profiles/minecraft/" + name).openConnection();
       conn.setConnectTimeout(5000);
+      conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
       this.response = true;
       StringBuilder builder = new StringBuilder();
@@ -41,6 +42,7 @@ public class MojangAPI extends Mojang {
     try {
       URLConnection conn = new URL("https://sessionserver.mojang.com/session/minecraft/profile/" + id + "?unsigned=false").openConnection();
       conn.setConnectTimeout(5000);
+      conn.setReadTimeout(5000);
       final BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
       this.response = true;
       StringBuilder builder = new StringBuilder();
