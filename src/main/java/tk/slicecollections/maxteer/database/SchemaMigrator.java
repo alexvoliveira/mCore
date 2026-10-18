@@ -66,6 +66,15 @@ final class SchemaMigrator {
           }
           record(connection, 3, "Create persistent selected skins and expiring skin history");
         }
+
+        if (!isApplied(connection, 4)) {
+          if (hasIndex(connection, "mCoreSkinHistory", "uq_mCoreSkinHistory_player_skin")) {
+            try (Statement statement = connection.createStatement()) {
+              statement.execute("ALTER TABLE mCoreSkinHistory DROP INDEX uq_mCoreSkinHistory_player_skin");
+            }
+          }
+          record(connection, 4, "Store skin history as the last seven selection events");
+        }
       } finally {
         releaseLock(connection);
       }
@@ -124,6 +133,18 @@ final class SchemaMigrator {
       statement.setInt(1, version);
       statement.setString(2, description);
       statement.executeUpdate();
+    }
+  }
+
+  private static boolean hasIndex(Connection connection, String table, String index) throws SQLException {
+    try (PreparedStatement statement = connection.prepareStatement(
+        "SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS " +
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1")) {
+      statement.setString(1, table);
+      statement.setString(2, index);
+      try (ResultSet result = statement.executeQuery()) {
+        return result.next();
+      }
     }
   }
 

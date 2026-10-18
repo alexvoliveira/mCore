@@ -61,12 +61,10 @@ public final class SkinHistoryManager {
 
     // Enqueue every operation immediately. The DB writer drains queued statements on shutdown;
     // dependent thenCompose callbacks could otherwise try to enqueue after the writer has stopped.
+    // History is an event log: selecting the same skin again creates a new recent-use entry.
     CompletableFuture<Void> saveHistory = database.execute(
         "INSERT INTO mCoreSkinHistory (player_uuid, player_name, skin_id, skin_name, skin_owner, texture_value, texture_signature, used_at, expires_at) " +
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE " +
-        "player_name = VALUES(player_name), skin_name = VALUES(skin_name), skin_owner = VALUES(skin_owner), " +
-        "texture_value = VALUES(texture_value), texture_signature = VALUES(texture_signature), " +
-        "used_at = VALUES(used_at), expires_at = VALUES(expires_at)",
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         uuid, playerName, skin.getId(), skin.getDisplayName(), skin.getOwnerName(), value, signature, now, expiresAt);
 
     CompletableFuture<Void> removeExpired = database.execute(
