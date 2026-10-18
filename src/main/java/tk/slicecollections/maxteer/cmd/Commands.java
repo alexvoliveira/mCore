@@ -7,7 +7,6 @@ import org.bukkit.command.SimpleCommandMap;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.cash.CashManager;
 import tk.slicecollections.maxteer.player.fake.FakeManager;
-import tk.slicecollections.maxteer.skins.SkinCommand;
 
 import java.util.Arrays;
 import java.util.logging.Level;
