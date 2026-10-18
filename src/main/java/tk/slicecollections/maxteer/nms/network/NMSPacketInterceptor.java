@@ -267,6 +267,8 @@ public final class NMSPacketInterceptor {
       Object transformed = dispatch(player, message, true);
       if (transformed != null) {
         context.write(transformed, promise);
+      } else {
+        promise.trySuccess();
       }
     }
 
