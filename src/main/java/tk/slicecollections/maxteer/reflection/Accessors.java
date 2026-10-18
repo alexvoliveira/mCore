@@ -35,8 +35,12 @@ public class Accessors {
       field.setAccessible(true);
     }
 
-    if (field.getModifiers() != (field.getModifiers() & ~Modifier.FINAL)) {
-      getField(Field.class, "modifiers").set(field, field.getModifiers() & ~Modifier.FINAL);
+    if ((field.getModifiers() & Modifier.FINAL) != 0) {
+      try {
+        getField(Field.class, "modifiers").set(field, field.getModifiers() & ~Modifier.FINAL);
+      } catch (RuntimeException ignored) {
+        // Modern JDKs no longer expose Field.modifiers; field access can still work.
+      }
     }
   }
 
