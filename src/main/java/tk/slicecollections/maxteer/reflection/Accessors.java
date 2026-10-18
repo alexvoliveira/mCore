@@ -35,8 +35,25 @@ public class Accessors {
       field.setAccessible(true);
     }
 
-    if (field.getModifiers() != (field.getModifiers() & ~Modifier.FINAL)) {
-      getField(Field.class, "modifiers").set(field, field.getModifiers() & ~Modifier.FINAL);
+    if ((field.getModifiers() & Modifier.FINAL) == 0) {
+      return;
+    }
+
+    // Java 8 exposes Field.modifiers. Newer JDKs may hide or remove it.
+    // Clearing FINAL is only needed by a few legacy reflection writes; normal
+    // access to mutable objects held in final fields does not require it.
+    try {
+      Field modifiersField = Field.class.getDeclaredField("modifiers");
+      if (!modifiersField.isAccessible()) {
+        modifiersField.setAccessible(true);
+      }
+      modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
+    } catch (NoSuchFieldException ignored) {
+      // JDK 12+ no longer exposes this field. Keep the target accessible and
+      // let Field.set handle non-static final instance fields where permitted.
+    } catch (ReflectiveOperationException | RuntimeException ignored) {
+      // Some modular JDKs prevent changing reflection metadata. Access to the
+      // target field itself has already been attempted above.
     }
   }
 
