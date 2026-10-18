@@ -12,7 +12,6 @@
         <main-bukkit>tk.slicecollections.maxteer.Core</main-bukkit>
         <main-bungee>tk.slicecollections.maxteer.bungee.Bungee</main-bungee>
 
-        <protocollib.version>4.5.0</protocollib.version>
         <placeholder-api.version>2.10.5</placeholder-api.version>
 
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -26,11 +25,6 @@
         <repository>
             <id>nms-repo</id>
             <url>https://repo.codemc.org/repository/nms/</url>
-        </repository>
-        <!-- ProtocolLib -->
-        <repository>
-            <id>dmulloy2-repo</id>
-            <url>https://repo.dmulloy2.net/nexus/repository/public/</url>
         </repository>
         <!-- PlaceHolderAPI -->
         <repository>
@@ -73,12 +67,6 @@
             <systemPath>D:/Database/Dependências/BungeeCord.jar</systemPath>
         </dependency>
         <dependency>
-            <groupId>com.comphenix.protocol</groupId>
-            <artifactId>ProtocolLib</artifactId>
-            <version>${protocollib.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
             <version>${placeholder-api.version}</version>
@@ -111,8 +99,6 @@
                                 <excludes>
                                     <exclude>org.spigotmc:*</exclude>
                                     <exclude>net.md_5:*</exclude>
-                                    <exclude>cglib:*</exclude>
-                                    <exclude>com.comphenix.**:*</exclude>
                                     <exclude>me.clip:*</exclude>
                                 </excludes>
                             </artifactSet>
