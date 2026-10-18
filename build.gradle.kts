@@ -19,7 +19,6 @@ repositories {
     maven { url = uri("https://oss.sonatype.org/content/repositories/snapshots/") }
     // Historical repositories still host the versions required by the 1.8.8 runtime.
     maven { url = uri("https://repo.aikar.co/nexus/content/groups/aikar/") }
-    maven { url = uri("https://repo.dmulloy2.net/repository/public/") }
     maven { url = uri("https://repo.glaremasters.me/repository/public/") }
     maven { url = uri("https://repo.extendedclip.com/content/repositories/placeholderapi/") }
     maven { url = uri("https://jitpack.io") }
@@ -28,7 +27,6 @@ repositories {
 dependencies {
     compileOnly("org.spigotmc:spigot:1.8.8-R0.1-SNAPSHOT")
     compileOnly("net.md-5:bungeecord-api:1.8-SNAPSHOT")
-    compileOnly("com.comphenix.protocol:ProtocolLib:4.5.0")
     compileOnly("me.clip:placeholderapi:2.10.5")
     compileOnly("org.projectlombok:lombok:1.18.48")
     annotationProcessor("org.projectlombok:lombok:1.18.48")
