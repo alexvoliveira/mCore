@@ -22,17 +22,17 @@ public final class SkinCommand extends Commands {
 
     Player player = (Player) sender;
     SkinLibrary library = Core.getInstance().getSkinLibrary();
-    if (library == null || library.getSkins().isEmpty()) {
-      player.sendMessage(MessageUtils.error("SKIN", "Nenhuma skin está configurada em skins.yml."));
-      return;
-    }
-
     if (args.length > 0 && ("history".equalsIgnoreCase(args[0])
         || "historico".equalsIgnoreCase(args[0]) || "histórico".equalsIgnoreCase(args[0])
         || "hist".equalsIgnoreCase(args[0]))) {
       MenuSkinHistory.open(player);
       return;
     }
+    if (library == null || library.getSkins().isEmpty()) {
+      player.sendMessage(MessageUtils.error("SKIN", "Nenhuma skin está configurada em skins.yml."));
+      return;
+    }
+
     new MenuSkinCatalog(player, 0);
   }
 }
