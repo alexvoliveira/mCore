@@ -10,7 +10,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.scheduler.BukkitTask;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.menus.PlayerMenuInventory;
 import tk.slicecollections.maxteer.utils.BukkitUtils;
