@@ -21,6 +21,10 @@ public final class SkinDefinition {
   public String getTextureValue() { return textureValue; }
   public String getTextureSignature() { return textureSignature; }
 
+  public boolean hasTextureValue() {
+    return textureValue != null && !textureValue.trim().isEmpty();
+  }
+
   public boolean hasStoredTexture() {
     return textureValue != null && !textureValue.trim().isEmpty()
         && textureSignature != null && !textureSignature.trim().isEmpty();
