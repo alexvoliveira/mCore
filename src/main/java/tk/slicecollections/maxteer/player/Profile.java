@@ -121,6 +121,12 @@ public class Profile {
     this.refreshPlayers();
   }
 
+  public void refreshHotbarProfileSkull() {
+    if (this.hotbar != null) {
+      this.hotbar.refreshProfileSkull(this);
+    }
+  }
+
   public void refreshPlayers() {
     Player player = this.getPlayer();
     if (player == null) {
