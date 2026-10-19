@@ -16,6 +16,8 @@ import tk.slicecollections.maxteer.player.Profile;
 import tk.slicecollections.maxteer.utils.MessageUtils;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -78,6 +80,34 @@ public final class SkinLibrary implements Listener {
 
     YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
     ConfigurationSection section = yaml.getConfigurationSection("skins");
+    if (section == null) {
+      section = yaml.createSection("skins");
+    }
+
+    // Merge newly bundled skins into an existing data-folder file without
+    // replacing entries that the server owner has already configured.
+    try (InputStreamReader reader = new InputStreamReader(
+        plugin.getResource("skins.yml"), StandardCharsets.UTF_8)) {
+      YamlConfiguration defaults = YamlConfiguration.loadConfiguration(reader);
+      ConfigurationSection defaultSkins = defaults.getConfigurationSection("skins");
+      boolean updated = false;
+      if (defaultSkins != null) {
+        for (String defaultId : defaultSkins.getKeys(false)) {
+          if (section.getConfigurationSection(defaultId) == null) {
+            ConfigurationSection defaultSkin = defaultSkins.getConfigurationSection(defaultId);
+            if (defaultSkin != null) {
+              section.createSection(defaultId, defaultSkin.getValues(false));
+              updated = true;
+            }
+          }
+        }
+      }
+      if (updated) {
+        yaml.save(file);
+      }
+    } catch (IOException ex) {
+      plugin.getLogger().log(Level.WARNING, "Could not merge default entries into skins.yml.", ex);
+    }
     if (section == null) {
       plugin.getLogger().warning("skins.yml has no 'skins' section; the skin catalogue is empty.");
       return;
