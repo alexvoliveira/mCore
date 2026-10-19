@@ -26,6 +26,7 @@ public class MenuBoosters extends PlayerMenuInventory {
 
   @Override
   protected void configureInventory(Viewer viewer, InventoryEditor editor) {
+    fillBorder(editor, 4);
     setMenuItem(editor, 12, BukkitUtils.deserializeItemStack("POTION : 1 : nome>&aMultiplicadores Pessoais : desc>&7Concede um &6Multiplicador de Coins &7apenas\n&7para &bVOCÊ &7em todos os minigames do servidor\n&7por um curto período de tempo.\n \n&eClique para ver seus multiplicadores!"));
     setMenuItem(editor, 14, BukkitUtils.deserializeItemStack("POTION:8232 : 1 : esconder>tudo : nome>&aMultiplicadores Gerais : desc>&7Concede um &6Multiplicador de Coins &7para\n&bTODOS &7os jogadores em apenas um minigame\n&7por um curto período de tempo.\n \n&eClique para ver seus multiplicadores!"));
 
