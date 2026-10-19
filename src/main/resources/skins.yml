@@ -1,5 +1,6 @@
 # Catalogue of selectable player skins.
-# Configure an online Java username as "owner", or provide BOTH signed texture fields.
+# Configure an online Java username as "owner", or provide a texture-value.
+# Value-only entries resolve a signature only from a profile with a matching texture URL.
 # The catalogue is loaded at startup; restart mCore after editing this file.
 skins:
   notch:
@@ -11,3 +12,29 @@ skins:
   dinnerbone:
     display-name: "&eDinnerbone"
     owner: "Dinnerbone"
+
+  tanjiro:
+    display-name: "&aTanjiro"
+    owner: "Tanjirina"
+    texture-value: "ewogICJ0aW1lc3RhbXAiIDogMTYzMjg0MjUxNjQxOSwKICAicHJvZmlsZUlkIiA6ICJmMjU5MTFiOTZkZDU0MjJhYTcwNzNiOTBmOGI4MTUyMyIsCiAgInByb2ZpbGVOYW1lIiA6ICJmYXJsb3VjaDEwMCIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS8xOTdkYjUxMjE2Y2U1ZDZjOTQ0N2M1OGUzZGNkZWNhYmJhZDQ0ODJkMzY2OWRmNDE0NDA3NjhjMTYwYmY4MGRhIgogICAgfQogIH0KfQ=="
+    texture-signature: ""
+  kakashi:
+    display-name: "&bKakashi"
+    owner: "eZio789"
+    texture-value: "ewogICJ0aW1lc3RhbXAiIDogMTYyNTM0OTI4OTgxMCwKICAicHJvZmlsZUlkIiA6ICI5ZDQyNWFiOGFmZjg0MGU1OWM3NzUzZjc5Mjg5YjMyZSIsCiAgInByb2ZpbGVOYW1lIiA6ICJUb21wa2luNDIiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzhiYzU3MDBkODBhMGQ1ZDcyYWE2MDE3MDk2ZmNhNmI5ZjA3MjI2YTVkNWFkYThmZTYxZDhhYWNhMzU2NjRjMiIKICAgIH0KICB9Cn0="
+    texture-signature: ""
+  obito:
+    display-name: "&cObito"
+    owner: "sharinganek"
+    texture-value: "ewogICJ0aW1lc3RhbXAiIDogMTYyNjA3ODAxMDY2OCwKICAicHJvZmlsZUlkIiA6ICIxOTI1MjFiNGVmZGI0MjVjODkzMWYwMmE4NDk2ZTExYiIsCiAgInByb2ZpbGVOYW1lIiA6ICJTZXJpYWxpemFibGUiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzc4MWRkYzNjMDBjM2VlMWYzMzBjZTVlZDlmODhlMTNhNWFhODMxNTk3Yjk1YjliMjBkYjc0NmY2M2I5ODJmNCIKICAgIH0KICB9Cn0="
+    texture-signature: ""
+  luffy:
+    display-name: "&eLuffy"
+    owner: "Luffy"
+    texture-value: "ewogICJ0aW1lc3RhbXAiIDogMTYxODc5ODE3MzU1MCwKICAicHJvZmlsZUlkIiA6ICJmZDQ3Y2I4YjgzNjQ0YmY3YWIyYmUxODZkYjI1ZmMwZCIsCiAgInByb2ZpbGVOYW1lIiA6ICJDVUNGTDEyIiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlL2I1OTE4NzM4ZWEzOTI2ZWUyYTM4MzUyOGY5MTkxMDM3YmIwZTBlMWYxYzc5ZDYxMzMyMTAyNDk1M2RkM2E0ZGYiLAogICAgICAibWV0YWRhdGEiIDogewogICAgICAgICJtb2RlbCIgOiAic2xpbSIKICAgICAgfQogICAgfQogIH0KfQ=="
+    texture-signature: ""
+  sakura:
+    display-name: "&dSakura"
+    owner: "MysticalFire128"
+    texture-value: "ewogICJ0aW1lc3RhbXAiIDogMTYzNTg5NzU2NTg2MywKICAicHJvZmlsZUlkIiA6ICJiYjdjY2E3MTA0MzQ0NDEyOGQzMDg5ZTEzYmRmYWI1OSIsCiAgInByb2ZpbGVOYW1lIiA6ICJsYXVyZW5jaW8zMDMiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTdkZDA3OWRjNTI5MWE0ZGIxY2Q5MjA1ODVmOGZiNjU3MTgyY2IzZTY4NGMxNDc4MjdhNzI0Y2E3NzJiZDgyNSIsCiAgICAgICJtZXRhZGF0YSIgOiB7CiAgICAgICAgIm1vZGVsIiA6ICJzbGltIgogICAgICB9CiAgICB9CiAgfQp9"
+    texture-signature: ""
