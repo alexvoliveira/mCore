@@ -11,10 +11,14 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import tk.slicecollections.maxteer.Core;
 import tk.slicecollections.maxteer.libraries.npclib.npc.skin.Skin;
+import tk.slicecollections.maxteer.libraries.profile.Mojang;
+import tk.slicecollections.maxteer.player.Profile;
 import tk.slicecollections.maxteer.utils.MessageUtils;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,6 +32,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class SkinLibrary implements Listener {
   private final Core plugin;
@@ -35,6 +41,7 @@ public final class SkinLibrary implements Listener {
   private final Map<String, SkinDefinition> definitions = new LinkedHashMap<>();
   private final ConcurrentMap<String, Skin> resolved = new ConcurrentHashMap<>();
   private final ConcurrentMap<UUID, AtomicLong> requests = new ConcurrentHashMap<>();
+  private final ConcurrentMap<UUID, String> selectedSkins = new ConcurrentHashMap<>();
 
   public SkinLibrary(Core plugin) {
     this.plugin = plugin;
@@ -53,6 +60,10 @@ public final class SkinLibrary implements Listener {
 
   public SkinDefinition getSkin(String id) {
     return id == null ? null : definitions.get(id.toLowerCase(Locale.ROOT));
+  }
+
+  public String getSelectedSkinId(UUID playerId) {
+    return playerId == null ? null : selectedSkins.get(playerId);
   }
 
   private void loadDefinitions() {
@@ -87,14 +98,16 @@ public final class SkinLibrary implements Listener {
       String owner = value.getString("owner", "").trim();
       String texture = value.getString("texture-value", "").trim();
       String signature = value.getString("texture-signature", "").trim();
-      boolean inlineTexture = !texture.isEmpty() && !signature.isEmpty();
+      boolean hasTexture = !texture.isEmpty();
+      boolean hasSignature = !signature.isEmpty();
+      boolean inlineTexture = hasTexture && hasSignature;
 
-      if (!inlineTexture && !owner.matches("[A-Za-z0-9_]{1,16}")) {
-        plugin.getLogger().warning("Ignoring skin '" + rawId + "': provide a valid owner or both signed texture fields.");
+      if (!hasTexture && !owner.matches("[A-Za-z0-9_]{1,16}")) {
+        plugin.getLogger().warning("Ignoring skin '" + rawId + "': provide a valid owner or a texture value.");
         continue;
       }
-      if ((!texture.isEmpty() || !signature.isEmpty()) && !inlineTexture) {
-        plugin.getLogger().warning("Ignoring skin '" + rawId + "': texture-value and texture-signature must be set together.");
+      if (!hasTexture && hasSignature) {
+        plugin.getLogger().warning("Ignoring skin '" + rawId + "': a texture signature cannot be used without a value.");
         continue;
       }
 
@@ -157,14 +170,79 @@ public final class SkinLibrary implements Listener {
     if (cached != null) {
       return cached;
     }
-    Skin skin = definition.hasStoredTexture()
-        ? Skin.fromData(definition.getTextureValue(), definition.getTextureSignature())
-        : Skin.fromName(definition.getOwnerName());
+    Skin skin;
+    if (definition.hasStoredTexture()) {
+      skin = Skin.fromData(definition.getTextureValue(), definition.getTextureSignature());
+    } else if (definition.hasTextureValue()) {
+      skin = resolveStoredTexture(definition);
+    } else {
+      skin = Skin.fromName(definition.getOwnerName());
+    }
     if (!skin.isValid()) {
       throw new IllegalStateException("No valid signed texture could be resolved for " + definition.getOwnerName());
     }
     Skin existing = resolved.putIfAbsent(definition.getId(), skin);
     return existing == null ? skin : existing;
+  }
+
+  /**
+   * The catalogue may contain an old texture value without its signature. Resolve
+   * the signed property by the profile id embedded in that value and verify that
+   * Mojang still serves the same texture before applying it.
+   */
+  private Skin resolveStoredTexture(SkinDefinition definition) {
+    String expectedValue = definition.getTextureValue();
+    String profileId = extractProfileId(expectedValue);
+    if (profileId == null) {
+      throw new IllegalStateException("The stored skin value does not contain a valid profile id.");
+    }
+
+    try {
+      String property = Mojang.getSkinProperty(profileId);
+      if (property == null) {
+        throw new IllegalStateException("No signed texture was returned for the stored profile.");
+      }
+
+      String[] parts = property.split(" : ", 3);
+      if (parts.length != 3 || !"textures".equals(parts[0])
+          || parts[1].isEmpty() || parts[2].isEmpty()) {
+        throw new IllegalStateException("The profile did not return a valid signed texture.");
+      }
+
+      String expectedUrl = extractTextureUrl(expectedValue);
+      String signedUrl = extractTextureUrl(parts[1]);
+      if (expectedUrl == null || !expectedUrl.equals(signedUrl)) {
+        throw new IllegalStateException("The source profile no longer uses the texture in this catalogue.");
+      }
+
+      // Use the provider's matching value with its own signature; a signature
+      // cannot safely be paired with a different serialized texture value.
+      return Skin.fromData(parts[1], parts[2]);
+    } catch (IllegalStateException ex) {
+      throw ex;
+    } catch (Exception ex) {
+      throw new IllegalStateException("Could not resolve a signed texture for " + definition.getDisplayName(), ex);
+    }
+  }
+
+  private String extractProfileId(String value) {
+    try {
+      String decoded = new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+      Matcher matcher = Pattern.compile("\\\"profileId\\\"\\s*:\\s*\\\"([0-9a-fA-F]{32})\\\"").matcher(decoded);
+      return matcher.find() ? matcher.group(1) : null;
+    } catch (IllegalArgumentException ex) {
+      return null;
+    }
+  }
+
+  private String extractTextureUrl(String value) {
+    try {
+      String decoded = new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+      Matcher matcher = Pattern.compile("\\\"url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").matcher(decoded);
+      return matcher.find() ? matcher.group(1) : null;
+    } catch (IllegalArgumentException ex) {
+      return null;
+    }
   }
 
   private long beginRequest(Player player) {
@@ -186,6 +264,20 @@ public final class SkinLibrary implements Listener {
         player.closeInventory();
       }
       skin.apply(player);
+      selectedSkins.put(player.getUniqueId(), definition.getId());
+      try {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+          if (!plugin.isEnabled() || !player.isOnline()) {
+            return;
+          }
+          Profile current = Profile.getProfile(player.getName());
+          if (current != null && current.getHotbar() != null) {
+            current.getHotbar().refreshProfileSkull(current);
+          }
+        }, 2L);
+      } catch (IllegalStateException ignored) {
+        // The plugin may be shutting down while the skin is being applied.
+      }
       if (recordHistory && plugin.getSkinHistoryManager() != null) {
         plugin.getSkinHistoryManager().recordSelection(
             player.getUniqueId(), player.getName(), definition, skin.getValue(), skin.getSignature());
@@ -257,13 +349,16 @@ public final class SkinLibrary implements Listener {
 
   @EventHandler
   public void onQuit(PlayerQuitEvent event) {
-    requests.remove(event.getPlayer().getUniqueId());
+    UUID playerId = event.getPlayer().getUniqueId();
+    requests.remove(playerId);
+    selectedSkins.remove(playerId);
   }
 
   public void shutdown() {
     resolver.shutdownNow();
     resolved.clear();
     requests.clear();
+    selectedSkins.clear();
     definitions.clear();
   }
 }
