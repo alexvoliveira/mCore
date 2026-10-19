@@ -213,7 +213,7 @@ public final class SkinLibrary implements Listener {
         }
 
         String[] parts = property.split(" : ", 3);
-        if (parts.length == 3 && "textures".equals(parts[0)
+        if (parts.length == 3 && "textures".equals(parts[0])
             && !parts[1].isEmpty() && !parts[2].isEmpty()
             && expectedUrl.equals(extractTextureUrl(parts[1]))) {
           return Skin.fromData(parts[1], parts[2]);
