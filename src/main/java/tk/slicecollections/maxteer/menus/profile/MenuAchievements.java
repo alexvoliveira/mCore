@@ -26,6 +26,7 @@ public class MenuAchievements extends PlayerMenuInventory {
 
   @Override
   protected void configureInventory(Viewer viewer, InventoryEditor editor) {
+    fillBorder(editor, 4);
     List<SkyWarsAchievement> skywars = Achievement.listAchievements(SkyWarsAchievement.class);
     long max = skywars.size();
     long completed = skywars.stream().filter(a -> a.isCompleted(profile)).count();
