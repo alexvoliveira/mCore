@@ -43,6 +43,25 @@ public class Hotbar {
     player.updateInventory();
   }
 
+  /** Refreshes the profile-head item after the player's skin is changed. */
+  public void refreshProfileSkull(Profile profile) {
+    Player player = profile == null ? null : profile.getPlayer();
+    if (player == null || !player.isOnline()) {
+      return;
+    }
+
+    this.buttons.stream()
+        .filter(button -> button.getSlot() >= 0 && button.getSlot() <= 8)
+        .filter(button -> button.getIcon().contains("%perfil%"))
+        .forEach(button -> {
+          ItemStack icon = BukkitUtils.deserializeItemStack(
+              PlaceholderAPI.setPlaceholders(player, button.getIcon().replace("%perfil%", "")));
+          player.getInventory().setItem(button.getSlot(), BukkitUtils.putProfileOnSkull(player, icon));
+        });
+
+    player.updateInventory();
+  }
+
   public HotbarButton compareButton(Player player, ItemStack item) {
     return this.buttons.stream().filter(button -> button.getSlot() >= 0 && button.getSlot() <= 8 && item.equals(player.getInventory().getItem(button.getSlot()))).findFirst()
         .orElse(null);
