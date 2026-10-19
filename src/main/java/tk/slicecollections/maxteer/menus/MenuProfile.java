@@ -26,6 +26,7 @@ public class MenuProfile extends PlayerMenuInventory {
 
   @Override
   protected void configureInventory(Viewer viewer, InventoryEditor editor) {
+    fillBorder(editor, 3);
     ItemStack skull = BukkitUtils.putProfileOnSkull(player, BukkitUtils.deserializeItemStack(
         "SKULL_ITEM:3 : 1 : nome>&aInformações Pessoais : desc>&fRank: "
             + Role.getRoleByName(profile.getDataContainer("mCoreProfile", "role").getAsString()).getName()
@@ -34,6 +35,8 @@ public class MenuProfile extends PlayerMenuInventory {
     editor.setItem(10, InventoryItem.of(skull).defaultCallback(event -> onClick(event.getSlot())));
     setMenuItem(editor, 11, BukkitUtils.deserializeItemStack(
         "PAPER : 1 : nome>&aEstatísticas : desc>&7Visualize as suas estatísticas de\n&7cada Minigame do nosso servidor.\n \n&eClique para ver as estatísticas!"));
+    setMenuItem(editor, 12, BukkitUtils.putProfileOnSkull(player, BukkitUtils.deserializeItemStack(
+        "SKULL_ITEM:3 : 1 : nome>&aSkins : desc>&7Personalize a aparência do seu personagem.\n&7Escolha uma skin no catálogo.\n \n&eClique para escolher!")));
     setMenuItem(editor, 13, BukkitUtils.deserializeItemStack(
         "REDSTONE_COMPARATOR : 1 : nome>&aPreferências : desc>&7Em nosso servidor você pode personalizar\n&7sua experiência de jogo por completo.\n&7Personalize várias opções únicas como\n&7você desejar!\n \n&8As opções incluem ativar ou desativar as\n&8mensagens privadas, os jogadores e outros.\n \n&eClique para personalizar as opções!"));
     setMenuItem(editor, 14, BukkitUtils.deserializeItemStack(
@@ -51,6 +54,7 @@ public class MenuProfile extends PlayerMenuInventory {
     switch (slot) {
       case 10: EnumSound.ITEM_PICKUP.play(player, 0.5F, 2.0F); break;
       case 11: EnumSound.CLICK.play(player, 0.5F, 2.0F); new MenuStatistics(current); break;
+      case 12: EnumSound.CLICK.play(player, 0.5F, 2.0F); new tk.slicecollections.maxteer.skins.MenuSkinCatalog(player, 0); break;
       case 13: EnumSound.CLICK.play(player, 0.5F, 2.0F); new MenuPreferences(current); break;
       case 14: EnumSound.CLICK.play(player, 0.5F, 2.0F); new MenuTitles(current); break;
       case 15: EnumSound.CLICK.play(player, 0.5F, 2.0F); new MenuBoosters(current); break;
