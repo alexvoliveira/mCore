@@ -100,8 +100,6 @@ public final class SkinLibrary implements Listener {
       String signature = value.getString("texture-signature", "").trim();
       boolean hasTexture = !texture.isEmpty();
       boolean hasSignature = !signature.isEmpty();
-      boolean inlineTexture = hasTexture && hasSignature;
-
       if (!hasTexture && !owner.matches("[A-Za-z0-9_]{1,16}")) {
         plugin.getLogger().warning("Ignoring skin '" + rawId + "': provide a valid owner or a texture value.");
         continue;
