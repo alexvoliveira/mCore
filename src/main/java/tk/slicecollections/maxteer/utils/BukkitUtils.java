@@ -326,6 +326,34 @@ public class BukkitUtils {
   }
 
   /**
+   * Applies the player's current texture to a skull using a separate profile UUID.
+   * This avoids the client reusing the original player's cached texture for the item.
+   */
+  public static ItemStack putCurrentSkinOnSkull(Player player, ItemStack head) {
+    if (player == null || head == null || !(head.getItemMeta() instanceof SkullMeta)) {
+      return head;
+    }
+
+    GameProfile sourceProfile = (GameProfile) GET_PROFILE.invoke(player);
+    Collection<Property> textures = sourceProfile.getProperties().get("textures");
+    if (textures == null || textures.isEmpty()) {
+      return putProfileOnSkull(player, head);
+    }
+
+    GameProfile skullProfile = new GameProfile(UUID.randomUUID(), null);
+    for (Property texture : textures) {
+      if (texture != null) {
+        skullProfile.getProperties().put("textures", texture);
+      }
+    }
+
+    if (skullProfile.getProperties().get("textures").isEmpty()) {
+      return putProfileOnSkull(player, head);
+    }
+    return putProfileOnSkull((Object) skullProfile, head);
+  }
+
+  /**
    * Seta a partir da {@code Reflection} o perfil de um {@link ItemStack} do tipo Cabeça.
    *
    * @param profile O {@link GameProfile} para modificar.
