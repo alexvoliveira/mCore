@@ -25,6 +25,7 @@ public class MenuPreferences extends PlayerMenuInventory {
 
   @Override
   protected void configureInventory(Viewer viewer, InventoryEditor editor) {
+    fillBorder(editor, 5);
     PreferencesContainer pc = profile.getPreferencesContainer();
     PlayerVisibility pv = pc.getPlayerVisibility();
     setMenuItem(editor, 11, BukkitUtils.deserializeItemStack("ITEM_FRAME : 1 : nome>&aJogadores : desc>&7Ative ou desative os\n&7jogadores no lobby."));
