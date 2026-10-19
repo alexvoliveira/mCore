@@ -44,8 +44,11 @@ import tk.slicecollections.maxteer.reflection.Accessors;
 import tk.slicecollections.maxteer.reflection.acessors.FieldAccessor;
 import tk.slicecollections.maxteer.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -448,73 +451,76 @@ public class NMS1_8R3 implements INMS {
 
   @Override
   public void refreshPlayer(Player player) {
-    EntityPlayer ep = ((CraftPlayer) player).getHandle();
+    if (player == null || !player.isOnline()) {
+      return;
+    }
 
-    int entId = ep.getId();
-    Location l = player.getLocation();
+    EntityPlayer entityPlayer = ((CraftPlayer) player).getHandle();
+    Location location = player.getLocation();
 
-    PacketPlayOutPlayerInfo removeInfo = new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.REMOVE_PLAYER, ep);
-    PacketPlayOutEntityDestroy removeEntity = new PacketPlayOutEntityDestroy(entId);
-    PacketPlayOutNamedEntitySpawn addNamed = new PacketPlayOutNamedEntitySpawn(ep);
-    PacketPlayOutPlayerInfo addInfo = new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.ADD_PLAYER, ep);
-    PacketPlayOutEntityEquipment itemhand = new PacketPlayOutEntityEquipment(entId, 0, CraftItemStack.asNMSCopy(player.getItemInHand()));
-    PacketPlayOutEntityEquipment helmet = new PacketPlayOutEntityEquipment(entId, 4, CraftItemStack.asNMSCopy(player.getInventory().getHelmet()));
-    PacketPlayOutEntityEquipment chestplate = new PacketPlayOutEntityEquipment(entId, 3, CraftItemStack.asNMSCopy(player.getInventory().getChestplate()));
-    PacketPlayOutEntityEquipment leggings = new PacketPlayOutEntityEquipment(entId, 2, CraftItemStack.asNMSCopy(player.getInventory().getLeggings()));
-    PacketPlayOutEntityEquipment boots = new PacketPlayOutEntityEquipment(entId, 1, CraftItemStack.asNMSCopy(player.getInventory().getBoots()));
-    PacketPlayOutHeldItemSlot slot = new PacketPlayOutHeldItemSlot(player.getInventory().getHeldItemSlot());
+    boolean allowFlight = player.getAllowFlight();
+    boolean flying = player.isFlying();
+    int level = player.getLevel();
+    float experience = player.getExp();
+    double maxHealth = player.getMaxHealth();
+    double health = player.getHealth();
 
-    for (Player players : Bukkit.getOnlinePlayers()) {
-      if (players instanceof NPCHolder) {
+    // Refresh the profile entry before the respawn packet so the client receives
+    // the new signed texture property instead of its previously cached profile.
+    PacketPlayOutPlayerInfo removeInfo =
+        new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer);
+    PacketPlayOutPlayerInfo addInfo =
+        new PacketPlayOutPlayerInfo(EnumPlayerInfoAction.ADD_PLAYER, entityPlayer);
+    PacketPlayOutRespawn respawn = new PacketPlayOutRespawn(
+        player.getWorld().getEnvironment().getId(),
+        entityPlayer.getWorld().getDifficulty(),
+        entityPlayer.getWorld().getWorldData().getType(),
+        entityPlayer.playerInteractManager.getGameMode());
+    PacketPlayOutPosition position = new PacketPlayOutPosition(
+        location.getX(), location.getY(), location.getZ(),
+        location.getYaw(), location.getPitch(), new HashSet<>());
+
+    entityPlayer.playerConnection.sendPacket(removeInfo);
+    entityPlayer.playerConnection.sendPacket(addInfo);
+    entityPlayer.playerConnection.sendPacket(respawn);
+    entityPlayer.playerConnection.sendPacket(position);
+
+    // The respawn packet resets client-side state. Restore it on the next tick.
+    Bukkit.getScheduler().runTaskLater(Core.getInstance(), () -> {
+      if (!player.isOnline()) {
+        return;
+      }
+
+      player.setAllowFlight(allowFlight);
+      if (flying && allowFlight) {
+        player.setFlying(true);
+      }
+      player.updateInventory();
+      player.setLevel(level);
+      player.setExp(experience);
+      player.setMaxHealth(maxHealth);
+      player.setHealth(Math.min(health, player.getMaxHealth()));
+
+      EntityPlayer current = ((CraftPlayer) player).getHandle();
+      current.updateAbilities();
+      current.triggerHealthUpdate();
+    }, 1L);
+
+    // Recreate the player entity for every viewer who could already see them.
+    // Bukkit handles both the tab-list profile and the entity tracker.
+    List<Player> viewers = new ArrayList<>();
+    for (Player viewer : Bukkit.getOnlinePlayers()) {
+      if (viewer.equals(player) || viewer instanceof NPCHolder || !viewer.canSee(player)) {
         continue;
       }
 
-      EntityPlayer epOn = ((CraftPlayer) players).getHandle();
-      PlayerConnection con = epOn.playerConnection;
-      if (players.equals(player)) {
-        con.sendPacket(removeInfo);
+      viewers.add(viewer);
+      viewer.hidePlayer(player);
+    }
 
-        final boolean allow = player.getAllowFlight();
-        final boolean flying = player.isFlying();
-        final Location location = player.getLocation();
-        final int level = player.getLevel();
-        final float xp = player.getExp();
-        final double maxHealth = player.getMaxHealth();
-        final double health = player.getHealth();
-
-        Bukkit.getScheduler().runTaskLater(Core.getInstance(), () -> {
-          con.sendPacket(new PacketPlayOutRespawn(players.getWorld().getEnvironment().getId(), epOn.getWorld().getDifficulty(), epOn.getWorld().getWorldData().getType(),
-            epOn.playerInteractManager.getGameMode()));
-
-          player.setAllowFlight(allow);
-          if (flying) {
-            player.setFlying(allow);
-          }
-          player.teleport(location);
-          player.updateInventory();
-          player.setLevel(level);
-          player.setExp(xp);
-          player.setMaxHealth(maxHealth);
-          player.setHealth(health);
-          epOn.updateAbilities();
-
-          con.sendPacket(addInfo);
-        }, 1L);
-      } else {
-        if (players.canSee(player) && players.getWorld().equals(player.getWorld())) {
-          con.sendPacket(removeEntity);
-          con.sendPacket(removeInfo);
-          con.sendPacket(addInfo);
-          con.sendPacket(addNamed);
-          con.sendPacket(itemhand);
-          con.sendPacket(helmet);
-          con.sendPacket(chestplate);
-          con.sendPacket(leggings);
-          con.sendPacket(boots);
-        } else if (players.canSee(player)) {
-          con.sendPacket(removeInfo);
-          con.sendPacket(addInfo);
-        }
+    for (Player viewer : viewers) {
+      if (viewer.isOnline() && player.isOnline()) {
+        viewer.showPlayer(player);
       }
     }
   }
