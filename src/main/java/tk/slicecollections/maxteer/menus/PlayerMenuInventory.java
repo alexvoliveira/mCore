@@ -6,6 +6,7 @@ import com.henryfabio.minecraft.inventoryapi.item.InventoryItem;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 /** Common per-player menu behavior backed by inventory-api. */
 public abstract class PlayerMenuInventory extends SimpleInventory {
@@ -22,6 +23,21 @@ public abstract class PlayerMenuInventory extends SimpleInventory {
       return;
     }
     editor.setItem(slot, InventoryItem.of(item).defaultCallback(event -> onClick(event.getSlot())));
+  }
+
+  /** Fills the outer edge while preserving the central item layout. */
+  protected final void fillBorder(InventoryEditor editor, int rows) {
+    int size = Math.min(Math.max(rows, 1), 6) * 9;
+    ItemStack pane = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 7);
+    ItemMeta meta = pane.getItemMeta();
+    meta.setDisplayName("§r");
+    pane.setItemMeta(meta);
+
+    for (int slot = 0; slot < size; slot++) {
+      if (slot < 9 || slot >= size - 9 || slot % 9 == 0 || slot % 9 == 8) {
+        setMenuItem(editor, slot, pane.clone());
+      }
+    }
   }
 
   protected final void openForPlayer() {
