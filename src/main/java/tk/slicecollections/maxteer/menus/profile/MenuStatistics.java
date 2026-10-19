@@ -17,6 +17,7 @@ public class MenuStatistics extends PlayerMenuInventory {
 
   @Override
   protected void configureInventory(Viewer viewer, InventoryEditor editor) {
+    fillBorder(editor, 4);
     setMenuItem(editor, 11, BukkitUtils.deserializeItemStack(PlaceholderAPI.setPlaceholders(player,
         "GRASS : 1 : nome>&aSky Wars : desc>&eSolo:\n &8▪ &fAbates: &7%mCore_SkyWars_1v1kills%\n &8▪ &fMortes: &7%mCore_SkyWars_1v1deaths%\n &8▪ &fVitórias: &7%mCore_SkyWars_1v1wins%\n &8▪ &fPartidas: &7%mCore_SkyWars_1v1games%\n &8▪ &fAssistências: &7%mCore_SkyWars_1v1assists%\n \n&eDupla:\n &8▪ &fAbates: &7%mCore_SkyWars_2v2kills%\n &8▪ &fMortes: &7%mCore_SkyWars_2v2deaths%\n &8▪ &fVitórias: &7%mCore_SkyWars_2v2wins%\n &8▪ &fPartidas: &7%mCore_SkyWars_2v2games%\n &8▪ &fAssistências: &7%mCore_SkyWars_2v2assists%\n \n&fCoins: &6%mCore_SkyWars_coins%")));
     setMenuItem(editor, 13, BukkitUtils.deserializeItemStack(PlaceholderAPI.setPlaceholders(player,
