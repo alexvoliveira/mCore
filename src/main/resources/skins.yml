@@ -1,5 +1,7 @@
 # Catalogue of selectable player skins.
-# Configure an online Java username as "owner", or provide BOTH signed texture fields.
+# Configure an online Java username as "owner", or provide a texture-value.
+# Value-only skins resolve a signature from a profile with the same texture URL.
+# If the original skin is no longer on an account, provide its matching signed value.
 # The catalogue is loaded at startup; restart mCore after editing this file.
 skins:
   notch:
