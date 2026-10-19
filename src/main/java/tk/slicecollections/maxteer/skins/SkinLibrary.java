@@ -191,38 +191,50 @@ public final class SkinLibrary implements Listener {
    * Mojang still serves the same texture before applying it.
    */
   private Skin resolveStoredTexture(SkinDefinition definition) {
-    String expectedValue = definition.getTextureValue();
-    String profileId = extractProfileId(expectedValue);
-    if (profileId == null) {
-      throw new IllegalStateException("The stored skin value does not contain a valid profile id.");
+    String expectedUrl = extractTextureUrl(definition.getTextureValue());
+    if (expectedUrl == null) {
+      throw new IllegalStateException("The stored skin value does not contain a valid texture URL.");
     }
 
+    List<String> profileIds = new ArrayList<>();
     try {
-      String property = Mojang.getSkinProperty(profileId);
-      if (property == null) {
-        throw new IllegalStateException("No signed texture was returned for the stored profile.");
+      String ownerId = Mojang.getUUID(definition.getOwnerName());
+      if (ownerId != null && !ownerId.isEmpty()) {
+        profileIds.add(ownerId);
       }
-
-      String[] parts = property.split(" : ", 3);
-      if (parts.length != 3 || !"textures".equals(parts[0])
-          || parts[1].isEmpty() || parts[2].isEmpty()) {
-        throw new IllegalStateException("The profile did not return a valid signed texture.");
-      }
-
-      String expectedUrl = extractTextureUrl(expectedValue);
-      String signedUrl = extractTextureUrl(parts[1]);
-      if (expectedUrl == null || !expectedUrl.equals(signedUrl)) {
-        throw new IllegalStateException("The source profile no longer uses the texture in this catalogue.");
-      }
-
-      // Use the provider's matching value with its own signature; a signature
-      // cannot safely be paired with a different serialized texture value.
-      return Skin.fromData(parts[1], parts[2]);
-    } catch (IllegalStateException ex) {
-      throw ex;
-    } catch (Exception ex) {
-      throw new IllegalStateException("Could not resolve a signed texture for " + definition.getDisplayName(), ex);
+    } catch (Exception ignored) {
+      // The owner may not be resolvable; try the profile id stored in the texture.
     }
+
+    String embeddedId = extractProfileId(definition.getTextureValue());
+    if (embeddedId != null && !profileIds.contains(embeddedId)) {
+      profileIds.add(embeddedId);
+    }
+
+    for (String profileId : profileIds) {
+      try {
+        String property = Mojang.getSkinProperty(profileId);
+        if (property == null) {
+          continue;
+        }
+
+        String[] parts = property.split(" : ", 3);
+        if (parts.length != 3 || !"textures".equals(parts[0])
+            || parts[1].isEmpty() || parts[2].isEmpty()) {
+          continue;
+        }
+
+        if (expectedUrl.equals(extractTextureUrl(parts[1]))) {
+          // The returned signature belongs to the returned value, so keep the pair intact.
+          return Skin.fromData(parts[1], parts[2]);
+        }
+      } catch (Exception ignored) {
+        // Try the next known profile id if this provider lookup fails.
+      }
+    }
+
+    throw new IllegalStateException(
+        "No current signed profile matches the texture configured for " + definition.getDisplayName());
   }
 
   private String extractProfileId(String value) {
