@@ -7,7 +7,8 @@ import lombok.Setter;
 
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketListener;
-import com.henryfabio.minecraft.inventoryapi.manager.InventoryManager;
+import com.henryfabio.minecraft.inventoryapi.listener.CustomInventoryListener;
+import com.henryfabio.minecraft.inventoryapi.schedule.InventoryUpdateRunnable;
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.clip.placeholderapi.PlaceholderAPIPlugin;
 import org.bukkit.Bukkit;
@@ -140,7 +141,8 @@ public class Core extends MPlugin {
     this.expansion = new MCoreExpansion();
     PlaceholderAPI.registerExpansion(this.expansion);
 
-    InventoryManager.enable(this);
+    Bukkit.getPluginManager().registerEvents(new CustomInventoryListener(), this);
+    Bukkit.getScheduler().runTaskTimer(this, new InventoryUpdateRunnable(), 0L, 20L);
     Bukkit.getPluginManager().registerEvents(new InventoryMenuListener(), this);
 
     Database.setupDatabase(
