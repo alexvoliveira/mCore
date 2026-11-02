@@ -140,7 +140,7 @@ public class Listeners implements Listener {
     }
 
     format.append(rolePrefix).append(current).append("§7: §f");
-    format.append(role.isDefault() ? evt.getMessage() : StringUtils.formatColors(evt.getMessage()));
+    format.append(role.isDefault() ? StringUtils.stripColors(evt.getMessage()) : StringUtils.formatColors(evt.getMessage()));
 
     TextComponent component = new TextComponent("");
     component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tell " + current + " "));
