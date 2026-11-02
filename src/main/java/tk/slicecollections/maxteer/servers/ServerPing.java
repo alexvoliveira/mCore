@@ -108,7 +108,7 @@ public class ServerPing {
     this.online = players.get("online").getAsInt();
   }
 
-  static String extractMotd(JsonElement component) {
+  private static String extractMotd(JsonElement component) {
     if (component == null || component.isJsonNull()) {
       return "";
     }
