@@ -127,9 +127,8 @@ public class Listeners implements Listener {
 
     Player player = evt.getPlayer();
 
-    String format = String.format(evt.getFormat(), player.getName(), evt.getMessage());
-
     String current = Manager.getCurrent(player.getName());
+    String format = String.format(evt.getFormat(), current, evt.getMessage());
     Role role = Role.getPlayerRole(player);
     TextComponent component = new TextComponent("");
     for (BaseComponent components : TextComponent.fromLegacyText(format)) {
