@@ -78,12 +78,12 @@ public class NPCListeners implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.MONITOR)
+  @EventHandler(priority = EventPriority.HIGHEST)
   public void onEntityDamage(EntityDamageEvent evt) {
     if (NPCLibrary.isNPC(evt.getEntity())) {
       NPC npc = NPCLibrary.getNPC(evt.getEntity());
-      if (!npc.isProtected()) {
-        evt.setCancelled(false);
+      if (npc.isProtected()) {
+        evt.setCancelled(true);
       }
     }
   }
