@@ -203,7 +203,7 @@ public class NPCListeners implements Listener {
     respawnAllFromCoord(toCoord(evt.getChunk()));
   }
 
-  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
   public void onChunkUnload(ChunkUnloadEvent evt) {
     ChunkCoord coord = toCoord(evt.getChunk());
     Location location = new Location(null, 0, 0, 0);
