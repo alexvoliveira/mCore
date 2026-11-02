@@ -8,6 +8,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -101,9 +103,47 @@ public class ServerPing {
   private void processData() {
     JsonObject players = json.get("players").getAsJsonObject();
 
-    this.motd = json.get("description").getAsString();
+    this.motd = extractMotd(json.get("description"));
     this.max = players.get("max").getAsInt();
     this.online = players.get("online").getAsInt();
+  }
+
+  static String extractMotd(JsonElement component) {
+    if (component == null || component.isJsonNull()) {
+      return "";
+    }
+
+    if (component.isJsonPrimitive()) {
+      return component.getAsString();
+    }
+
+    if (component.isJsonArray()) {
+      StringBuilder text = new StringBuilder();
+      JsonArray components = component.getAsJsonArray();
+      for (JsonElement child : components) {
+        text.append(extractMotd(child));
+      }
+      return text.toString();
+    }
+
+    if (component.isJsonObject()) {
+      JsonObject object = component.getAsJsonObject();
+      StringBuilder text = new StringBuilder();
+
+      JsonElement ownText = object.get("text");
+      if (ownText != null && ownText.isJsonPrimitive()) {
+        text.append(ownText.getAsString());
+      }
+
+      JsonElement extra = object.get("extra");
+      if (extra != null && extra.isJsonArray()) {
+        text.append(extractMotd(extra));
+      }
+
+      return text.toString();
+    }
+
+    return "";
   }
 
   @Getter
