@@ -141,6 +141,8 @@ public class Core extends MPlugin {
     this.expansion = new MCoreExpansion();
     PlaceholderAPI.registerExpansion(this.expansion);
 
+    // InventoryManager.enable() schedules this Bukkit update runnable asynchronously.
+    // Register the public components directly so inventory updates run on the main thread.
     Bukkit.getPluginManager().registerEvents(new CustomInventoryListener(), this);
     Bukkit.getScheduler().runTaskTimer(this, new InventoryUpdateRunnable(), 0L, 20L);
     Bukkit.getPluginManager().registerEvents(new InventoryMenuListener(), this);
