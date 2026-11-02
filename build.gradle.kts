@@ -36,6 +36,8 @@ dependencies {
     implementation("com.zaxxer:HikariCP:3.4.5")
     implementation("com.mysql:mysql-connector-j:8.0.33")
     implementation("com.github.HenryFabio:inventory-api:2.0.3")
+
+    testImplementation("junit:junit:4.13.2")
 }
 
 sourceSets {
