@@ -71,7 +71,7 @@ public class Listeners implements Listener {
     }
   }
 
-  @EventHandler(priority = EventPriority.MONITOR)
+  @EventHandler(priority = EventPriority.HIGHEST)
   public void onPlayerLoginMonitor(PlayerLoginEvent evt) {
     if (evt.getResult() != PlayerLoginEvent.Result.ALLOWED) {
       Profile.discardPreloadedProfile(evt.getPlayer().getName());
@@ -119,7 +119,7 @@ public class Listeners implements Listener {
     PROTECTION_LOBBY.remove(evt.getPlayer().getName().toLowerCase());
   }
 
-  @EventHandler(priority = EventPriority.MONITOR)
+  @EventHandler(priority = EventPriority.HIGHEST)
   public void onAsyncPlayerChat(AsyncPlayerChatEvent evt) {
     if (evt.isCancelled()) {
       return;
@@ -147,7 +147,7 @@ public class Listeners implements Listener {
     });
   }
 
-  @EventHandler(priority = EventPriority.MONITOR)
+  @EventHandler(priority = EventPriority.HIGHEST)
   public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent evt) {
     if (evt.isCancelled()) {
       return;
