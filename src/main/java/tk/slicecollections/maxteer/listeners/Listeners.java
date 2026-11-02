@@ -128,13 +128,25 @@ public class Listeners implements Listener {
     Player player = evt.getPlayer();
 
     String current = Manager.getCurrent(player.getName());
-    String format = String.format(evt.getFormat(), current, evt.getMessage());
     Role role = Role.getPlayerRole(player);
+    String rolePrefix = StringUtils.getLastColor(role.getPrefix());
+    StringBuilder format = new StringBuilder();
+
+    if (!role.isDefault()) {
+      String roleName = StringUtils.stripColors(role.getName());
+      if (!roleName.isEmpty()) {
+        format.append(rolePrefix).append(roleName.substring(0, 1).toUpperCase()).append(" ");
+      }
+    }
+
+    format.append(rolePrefix).append(current).append("§7: §f");
+    format.append(role.isDefault() ? evt.getMessage() : StringUtils.formatColors(evt.getMessage()));
+
     TextComponent component = new TextComponent("");
-    for (BaseComponent components : TextComponent.fromLegacyText(format)) {
-      component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tell " + current + " "));
-      component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-        TextComponent.fromLegacyText(StringUtils.getLastColor(role.getPrefix()) + current + "\n§7Grupo: §f" + role.getName() + "\n \n§7Clique para enviar uma mensagem privada.")));
+    component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tell " + current + " "));
+    component.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+      TextComponent.fromLegacyText(rolePrefix + current + "\n§7Grupo: §f" + role.getName() + "\n \n§7Clique para enviar uma mensagem privada.")));
+    for (BaseComponent components : TextComponent.fromLegacyText(format.toString())) {
       component.addExtra(components);
     }
 
