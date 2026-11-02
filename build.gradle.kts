@@ -38,6 +38,7 @@ dependencies {
     implementation("com.github.HenryFabio:inventory-api:2.0.3")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.google.code.gson:gson:2.2.4")
 }
 
 sourceSets {
