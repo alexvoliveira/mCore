@@ -1,0 +1,6 @@
+# Formatação do chat global.
+# Placeholders: {prefix}, {role}, {role_initial}, {player}, {message}
+# Membros não recebem códigos de cor na mensagem; cargos podem usar &.
+format:
+  member: '{prefix}{player}§7: §f{message}'
+  role: '{prefix}{role_initial} {player}§7: §f{message}'
