@@ -29,7 +29,7 @@ import tk.slicecollections.maxteer.player.enums.ProtectionLobby;
 import tk.slicecollections.maxteer.player.fake.FakeManager;
 import tk.slicecollections.maxteer.player.hotbar.HotbarButton;
 import tk.slicecollections.maxteer.player.role.Role;
-import tk.slicecollections.maxteer.plugin.logger.MLogger;
+import tk.slicecollections.maxteer.plugin.logger.MLogger;\nimport tk.slicecollections.maxteer.plugin.config.MConfig;
 import tk.slicecollections.maxteer.reflection.Accessors;
 import tk.slicecollections.maxteer.reflection.acessors.FieldAccessor;
 import tk.slicecollections.maxteer.titles.TitleManager;
@@ -129,18 +129,22 @@ public class Listeners implements Listener {
 
     String current = Manager.getCurrent(player.getName());
     Role role = Role.getPlayerRole(player);
+    MConfig chatConfig = Core.getInstance().getConfig("chat");
     String rolePrefix = StringUtils.getLastColor(role.getPrefix());
-    StringBuilder format = new StringBuilder();
+    String format = role.isDefault()
+      ? chatConfig.getString("format.member", "{player}: {message}")
+      : chatConfig.getString("format.role", "{role_initial} {player}: {message}");
 
-    if (!role.isDefault()) {
-      String roleName = StringUtils.stripColors(role.getName());
-      if (!roleName.isEmpty()) {
-        format.append(rolePrefix).append(roleName.substring(0, 1).toUpperCase()).append(" ");
-      }
-    }
-
-    format.append(rolePrefix).append(current).append("§7: §f");
-    format.append(role.isDefault() ? StringUtils.stripColors(evt.getMessage()) : StringUtils.formatColors(evt.getMessage()));
+    String roleName = StringUtils.stripColors(role.getName());
+    String roleInitial = roleName.isEmpty() ? "" : roleName.substring(0, 1).toUpperCase();
+    String message = role.isDefault()
+      ? StringUtils.stripColors(evt.getMessage())
+      : StringUtils.formatColors(evt.getMessage());
+    format = format.replace("{prefix}", rolePrefix)
+      .replace("{role}", role.getName())
+      .replace("{role_initial}", roleInitial)
+      .replace("{player}", current)
+      .replace("{message}", message);
 
     TextComponent component = new TextComponent("");
     component.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/tell " + current + " "));
