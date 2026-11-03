@@ -45,11 +45,29 @@ public class ServerItem {
       ServerItem si = new ServerItem(key, CONFIG.getInt("items." + key + ".slot"), CONFIG.getString("items." + key + ".icon"), new LeastConnection<>());
       SERVERS.add(si);
       CONFIG.getStringList("items." + key + ".servernames").forEach(server -> {
-        if (server.split(" ; ").length < 2) {
+        if (server == null) {
           return;
         }
-
-        si.getBalancer().add(server, new Server(server.split(" ; ")[0], server.split(" ; ")[1], CONFIG.getInt("items." + key + ".max-players")));
+        String[] parts = server.split(" ; ", 2);
+        if (parts.length != 2) {
+          Core.getInstance().getLogger().warning("Ignoring invalid server entry for '" + key + "': " + server);
+          return;
+        }
+        String[] address = parts[0].split(":", 2);
+        if (address.length != 2) {
+          Core.getInstance().getLogger().warning("Ignoring invalid server address for '" + key + "': " + parts[0]);
+          return;
+        }
+        try {
+          int port = Integer.parseInt(address[1]);
+          if (address[0].trim().isEmpty() || port < 1 || port > 65535) {
+            throw new IllegalArgumentException("Invalid server address");
+          }
+          si.getBalancer().add(parts[1].trim(), new Server(address[0].trim() + ":" + port,
+            parts[1].trim(), CONFIG.getInt("items." + key + ".max-players")));
+        } catch (IllegalArgumentException ex) {
+          Core.getInstance().getLogger().warning("Ignoring invalid server address for '" + key + "': " + parts[0]);
+        }
       });
     }
 
