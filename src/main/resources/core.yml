@@ -1,0 +1,24 @@
+# mCore runtime behavior. Values are applied when the plugin starts.
+spawn:
+  # Empty uses the first loaded world's Bukkit spawn.
+  world: ""
+  # Set x/y/z together to override the world's spawn location.
+  # x: 0.5
+  # y: 64.0
+  # z: 0.5
+  # yaw: 0.0
+  # pitch: 0.0
+
+# Bukkit spawn protection radius. Zero disables spawn protection.
+spawn-protection-radius: 0
+
+inventory:
+  # Inventory API refresh period in server ticks (20 ticks = 1 second).
+  update-interval-ticks: 20
+
+profiles:
+  cleanup-initial-delay-ticks: 1200
+  cleanup-interval-ticks: 1200
+
+queue:
+  vip-permission: "mcore.queue"
