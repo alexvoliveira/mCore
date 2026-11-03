@@ -8,6 +8,7 @@ import java.util.logging.Level;
 import org.bukkit.inventory.ItemStack;
 import tk.slicecollections.maxteer.database.Database;
 import tk.slicecollections.maxteer.player.Profile;
+import tk.slicecollections.maxteer.plugin.config.MConfig;
 import tk.slicecollections.maxteer.utils.BukkitUtils;
 import tk.slicecollections.maxteer.utils.StringUtils;
 
@@ -56,16 +57,18 @@ public class Title {
 
   public static void setupTitles() {
     TITLES.clear();
-    TITLES.add(new Title("tbk", "§cSentinela da Ponte", "&8Pode ser desbloqueado através do\n&8Desafio \"Assassino das Pontes\"&8."));
-    TITLES.add(new Title("tbw", "§6Líder da Ponte", "&8Pode ser desbloqueado através do\n&8Desafio \"Glorioso sobre Pontes\"&8."));
-    TITLES.add(new Title("tbp", "§ePontuador Mestre", "&8Pode ser desbloqueado através do\n&8Desafio \"Maestria em Pontuação\"&8."));
-
-    TITLES.add(new Title("swk", "§cAnjo da Morte", "&8Pode ser desbloqueado através do\n&8Desafio \"Traidor Celestial\"&8."));
-    TITLES.add(new Title("sww", "§bRei Celestial", "&8Pode ser desbloqueado através do\n&8Desafio \"Destrono Celestial\"&8."));
-    TITLES.add(new Title("swa", "§6Companheiro de Asas", "&8Pode ser desbloqueado através do\n&8Desafio \"Anjo Guardião\"&8."));
-
-    TITLES.add(new Title("mmd", "§6Sherlock Holmes", "&8Pode ser desbloqueado através do\n&8Desafio \"Detetive\"&8."));
-    TITLES.add(new Title("mmk", "§4Jef the Killer", "&8Pode ser desbloqueado através do\n&8Desafio \"Serial Killer\"&8."));
+    MConfig config = tk.slicecollections.maxteer.Core.getInstance().getConfig("titles");
+    if (config.getSection("titles") != null) {
+      for (String key : config.getSection("titles").getKeys(false)) {
+        String name = config.getString("titles." + key + ".name");
+        String description = config.getString("titles." + key + ".description");
+        if (name == null || description == null || name.trim().isEmpty()) {
+          Database.LOGGER.warning("Ignoring invalid title configuration: " + key);
+          continue;
+        }
+        TITLES.add(new Title(key, StringUtils.formatColors(name), description));
+      }
+    }
 
     try (CachedRowSet titles = Database.getInstance().query("SELECT `id`, `name`, `description` FROM `mCoreTitles` ORDER BY `id`")) {
       if (titles != null) {
