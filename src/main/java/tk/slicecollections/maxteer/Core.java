@@ -69,6 +69,7 @@ public class Core extends MPlugin {
   public static final List<String> warnings = new ArrayList<>();
   public static final List<String> minigames = Arrays.asList("Sky Wars", "The Bridge", "Murder");
   public static String minigame = "";
+  private static String queuePermission = "mcore.queue";
 
   @Override
   public void start() {
@@ -87,12 +88,31 @@ public class Core extends MPlugin {
     }
 
     saveDefaultConfig();
-    lobby = Bukkit.getWorlds().get(0).getSpawnLocation();
+    MConfig settings = getConfig("core");
 
-    // Remover o spawn-protection-size
-    if (Bukkit.getSpawnRadius() != 0) {
-      Bukkit.setSpawnRadius(0);
+    String spawnWorldName = settings.getString("spawn.world");
+    org.bukkit.World spawnWorld = spawnWorldName == null || spawnWorldName.trim().isEmpty()
+      ? (Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0))
+      : Bukkit.getWorld(spawnWorldName);
+    if (spawnWorld == null) {
+      getLogger().severe("Configured lobby spawn world is unavailable: " + spawnWorldName);
+      Bukkit.getPluginManager().disablePlugin(this);
+      return;
     }
+    if (settings.contains("spawn.x") && settings.contains("spawn.y") && settings.contains("spawn.z")) {
+      lobby = new Location(spawnWorld, settings.getDouble("spawn.x"), settings.getDouble("spawn.y"),
+        settings.getDouble("spawn.z"), (float) settings.getDouble("spawn.yaw", 0.0D),
+        (float) settings.getDouble("spawn.pitch", 0.0D));
+    } else {
+      lobby = spawnWorld.getSpawnLocation();
+    }
+
+    int spawnProtectionRadius = Math.max(0, settings.getInt("spawn-protection-radius", 0));
+    if (Bukkit.getSpawnRadius() != spawnProtectionRadius) {
+      Bukkit.setSpawnRadius(spawnProtectionRadius);
+    }
+    queuePermission = settings.getString("queue.vip-permission") == null
+      ? "mcore.queue" : settings.getString("queue.vip-permission");
 
     // Plugins que causaram incompatibilidades
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getResource("blacklist.txt"), StandardCharsets.UTF_8))) {
@@ -144,18 +164,25 @@ public class Core extends MPlugin {
     // InventoryManager.enable() schedules this Bukkit update runnable asynchronously.
     // Register the public components directly so inventory updates run on the main thread.
     Bukkit.getPluginManager().registerEvents(new CustomInventoryListener(), this);
-    Bukkit.getScheduler().runTaskTimer(this, new InventoryUpdateRunnable(), 0L, 20L);
+    Bukkit.getScheduler().runTaskTimer(this, new InventoryUpdateRunnable(), 0L,
+      Math.max(1L, settings.getLong("inventory.update-interval-ticks", 20L)));
     Bukkit.getPluginManager().registerEvents(new InventoryMenuListener(), this);
 
+    String databasePassword = System.getenv("MCORE_MYSQL_PASSWORD");
+    if (databasePassword == null || databasePassword.isEmpty()) {
+      databasePassword = getConfig().getString("database.mysql.senha", "");
+    }
     Database.setupDatabase(
       getConfig().getString("database.mysql.host"),
       getConfig().getString("database.mysql.porta"),
       getConfig().getString("database.mysql.nome"),
       getConfig().getString("database.mysql.usuario"),
-      getConfig().getString("database.mysql.senha")
+      databasePassword
     );
+    long profileCleanupInterval = Math.max(1L, settings.getLong("profiles.cleanup-interval-ticks", 1200L));
+    long profileCleanupInitialDelay = Math.max(1L, settings.getLong("profiles.cleanup-initial-delay-ticks", profileCleanupInterval));
     this.profileCleanupTask = Bukkit.getScheduler().runTaskTimer(this,
-      Profile::cleanupStalePreloadedProfiles, 1200L, 1200L);
+      Profile::cleanupStalePreloadedProfiles, profileCleanupInitialDelay, profileCleanupInterval);
 
     NPCLibrary.setupNPCs(this);
     HologramLibrary.setupHolograms(this);
@@ -289,7 +316,7 @@ public class Core extends MPlugin {
     Player player = profile.getPlayer();
     if (player != null) {
       player.closeInventory();
-      Queue queue = player.hasPermission("mcore.queue") ? Queue.VIP : Queue.MEMBER;
+      Queue queue = player.hasPermission(queuePermission) ? Queue.VIP : Queue.MEMBER;
       QueuePlayer qp = queue.getQueuePlayer(player);
       if (qp != null) {
         if (qp.server.equalsIgnoreCase(name)) {
