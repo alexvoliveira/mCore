@@ -132,9 +132,10 @@ public class Listeners implements Listener {
     Role role = Role.getPlayerRole(player);
     MConfig chatConfig = Core.getInstance().getConfig("chat");
     String rolePrefix = StringUtils.getLastColor(role.getPrefix());
-    String format = role.isDefault()
-      ? chatConfig.getString("format.member", "{player}: {message}")
-      : chatConfig.getString("format.role", "{role_initial} {player}: {message}");
+    String format = chatConfig.getString(role.isDefault() ? "format.member" : "format.role");
+    if (format == null) {
+      format = role.isDefault() ? "{player}: {message}" : "{role_initial} {player}: {message}";
+    }
 
     String roleName = StringUtils.stripColors(role.getName());
     String roleInitial = roleName.isEmpty() ? "" : roleName.substring(0, 1).toUpperCase();
