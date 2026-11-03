@@ -111,8 +111,9 @@ public class Core extends MPlugin {
     if (Bukkit.getSpawnRadius() != spawnProtectionRadius) {
       Bukkit.setSpawnRadius(spawnProtectionRadius);
     }
-    queuePermission = settings.getString("queue.vip-permission") == null
-      ? "mcore.queue" : settings.getString("queue.vip-permission");
+    String configuredQueuePermission = settings.getString("queue.vip-permission");
+    queuePermission = configuredQueuePermission == null || configuredQueuePermission.trim().isEmpty()
+      ? "mcore.queue" : configuredQueuePermission.trim();
 
     // Plugins que causaram incompatibilidades
     try (BufferedReader reader = new BufferedReader(new InputStreamReader(this.getResource("blacklist.txt"), StandardCharsets.UTF_8))) {
