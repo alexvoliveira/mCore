@@ -1,4 +1,4 @@
-# Título do menu
+# Intervalo de atualização de status dos servidores, em ticks (20 = 1 segundo).\nrefresh-interval-ticks: 40\n\n# Título do menu
 title: 'Modos de Jogo'
 # Colunas do menu
 rows: 3
