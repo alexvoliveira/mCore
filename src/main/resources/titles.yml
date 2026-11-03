@@ -1,0 +1,26 @@
+# Títulos nativos do mCore. Títulos adicionais podem continuar sendo cadastrados no banco.
+titles:
+  tbk:
+    name: "&cSentinela da Ponte"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Assassino das Pontes"&8.'
+  tbw:
+    name: "&6Líder da Ponte"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Glorioso sobre Pontes"&8.'
+  tbp:
+    name: "&ePontuador Mestre"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Maestria em Pontuação"&8.'
+  swk:
+    name: "&cAnjo da Morte"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Traidor Celestial"&8.'
+  sww:
+    name: "&bRei Celestial"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Destrono Celestial"&8.'
+  swa:
+    name: "&6Companheiro de Asas"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Anjo Guardião"&8.'
+  mmd:
+    name: "&6Sherlock Holmes"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Detetive"&8.'
+  mmk:
+    name: "&4Jef the Killer"
+    description: '&8Pode ser desbloqueado através do\\n&8Desafio "Serial Killer"&8.'
