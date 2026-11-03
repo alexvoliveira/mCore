@@ -5,5 +5,5 @@ database:
     porta: '13402'
     nome: 'defaultdb'
     usuario: 'avnadmin'
-    # Set MCORE_MYSQL_PASSWORD in the environment where the proxy/server runs.
+    # MCORE_MYSQL_PASSWORD environment variable overrides this value.
     senha: ''
