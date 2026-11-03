@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.libs.jline.internal.InputStreamReader;
 import tk.slicecollections.maxteer.plugin.MPlugin;
@@ -103,6 +104,24 @@ public class MConfig {
   
   public List<Integer> getIntegerList(String path) {
     return this.rawConfig.getIntegerList(path);
+  }
+
+  public List<?> getList(String path) {
+    return this.rawConfig.getList(path);
+  }
+
+  public long getLong(String path, long def) {
+    return this.rawConfig.getLong(path, def);
+  }
+
+  public ItemStack getItemStack(String path) {
+    ItemStack item = this.rawConfig.getItemStack(path);
+    return item == null ? null : item.clone();
+  }
+
+  public boolean setItemStack(String path, ItemStack item) {
+    this.rawConfig.set(path, item == null ? null : item.clone());
+    return save();
   }
 
   public Set<String> getKeys(boolean flag) {
