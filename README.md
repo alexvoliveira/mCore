@@ -92,6 +92,8 @@ O artefato esperado é:
 build/libs/mCore.jar
 ```
 
+Em pushes para `main`, o GitHub Actions também copia o JAR validado para [`dist/mCore.jar`](dist/mCore.jar) e publica seu checksum em [`dist/mCore.jar.sha256`](dist/mCore.jar.sha256).
+
 O build necessita de JDK 8 e dos artefatos compatíveis de Spigot 1.8.8/NMS gerados pelo BuildTools. Em servidores Bukkit, instale também ProtocolLib 4.5.0 e PlaceholderAPI 2.10.5. O `pom.xml` foi mantido temporariamente como referência de migração e não é o caminho de build recomendado.
 
 Consulte [docs/BUILD.md](docs/BUILD.md) antes de compilar ou publicar uma versão.

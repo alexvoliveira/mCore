@@ -14,7 +14,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -51,3 +51,20 @@ jobs:
           path: build/libs/mCore.jar
           if-no-files-found: error
           retention-days: 7
+
+      - name: Publish built JAR to repository
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/libs/mCore.jar dist/mCore.jar
+          sha256sum dist/mCore.jar > dist/mCore.jar.sha256
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- dist/mCore.jar dist/mCore.jar.sha256
+          if git diff --cached --quiet; then
+            echo "No JAR changes to publish."
+            exit 0
+          fi
+          git commit -m "build: publish mCore.jar [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
