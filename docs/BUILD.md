@@ -1,43 +1,120 @@
-# Build local
+# Build e configuração do mCore
 
-## Requisitos
+Este guia cobre o build Gradle da branch consolidada, a instalação de dependências legadas e a configuração da conexão MySQL.
 
-- JDK compatível com o alvo Java 8; use uma toolchain/ambiente de compilação validado para o legado.
-- Gradle 8.14.3 disponível para gerar o Wrapper.
-- Artefatos compatíveis com Spigot/CraftBukkit 1.8.8 (incluindo NMS `v1_8_R3`) e a API BungeeCord 1.8 acessíveis por HTTPS ou instalados em `mavenLocal()`.
-- ProtocolLib 4.5.0 e PlaceholderAPI 2.10.5 compatíveis com o servidor legado. O build consulta as URLs atuais de ProtocolLib e também repositórios espelho HTTPS para os artefatos antigos que não são mais encontrados em todos os repositórios originais.
+## 1. Requisitos
 
-O código usa classes NMS da versão legada; gere o artefato compatível utilizando os BuildTools oficiais do Spigot para `1.8.8`. Confirme que a API BungeeCord publicada coincide com as assinaturas utilizadas pelo código antes de aceitar o build.
+- JDK 8.
+- Gradle Wrapper versionado no repositório (distribuição configurada em `gradle/wrapper/gradle-wrapper.properties`).
+- Spigot 1.8.8 gerado pelo BuildTools, incluindo o artefato compatível com NMS `v1_8_R3`.
+- Acesso aos repositórios Maven definidos em `build.gradle.kts`.
+- MySQL compatível com o Connector/J incluído no build para execução.
 
-## Gerar Wrapper e compilar
+A versão 1.8.8 é antiga. Use uma toolchain isolada, valide os artefatos baixados e não misture classes NMS de versões diferentes.
 
-Na raiz do projeto, com Gradle instalado:
+## 2. Preparar Spigot 1.8.8
 
-```sh
-sh scripts/bootstrap-gradle-wrapper.sh
-./gradlew clean build
+O código referencia diretamente classes Bukkit/NMS da versão 1.8.8. Gere os artefatos com o BuildTools oficial do Spigot para `1.8.8` e confirme que a dependência correspondente está disponível em `mavenLocal()`.
+
+O workflow usa uma action de BuildTools para gerar os artefatos antes da compilação. Em uma máquina local, siga o procedimento oficial do Spigot BuildTools para instalar a API e os artefatos de servidor correspondentes.
+
+## 3. Compilar com Gradle
+
+Na raiz do projeto:
+
+```bash
+./gradlew --no-daemon clean build
 ```
 
-O Gradle Wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` e propriedades com checksum da distribuição) está versionado. Mantenha os scripts e o JAR alinhados com a versão definida em `gradle-wrapper.properties`.
+No Windows:
 
-O JAR de saída configurado é `build/libs/mCore.jar`. O `pom.xml` fica preservado enquanto a compilação Gradle não for validada. Não remova o Maven apenas por o arquivo Gradle existir.
+```powershell
+.\gradlew.bat --no-daemon clean build
+```
 
-## Segurança e ambiente
+O JAR final é:
 
-Não adicione credenciais de banco ao repositório. Configure credenciais nos arquivos/configurações de runtime e restrinja os privilégios da conta SQL ao necessário. As URLs novas exigem TLS com validação de identidade/certificado; configure certificados e nomes DNS corretos no ambiente.
+```text
+build/libs/mCore.jar
+```
 
+O plugin Shadow gera o artefato e inclui as dependências de runtime configuradas. O pacote Inventory API e annotations são relocados para namespaces internos do mCore, evitando colisões com outros plugins. As classes Bukkit/Spigot não são relocadas.
 
-## MySQL TLS with Aiven
+## 4. Dependências e escopos
 
-The JDBC URL uses `sslMode=VERIFY_IDENTITY`: traffic is encrypted, the server certificate chain is validated, and the hostname must match the certificate. Do not set `sslMode=DISABLED` or accept arbitrary certificates.
+O `build.gradle.kts` separa APIs fornecidas pelo servidor das bibliotecas que são empacotadas no plugin.
 
-1. In the Aiven Console, open the MySQL service and download **CA certificate** from **Overview → Connection information**.
-2. Save the downloaded file as `plugins/mCore/ca.pem` on the machine running BungeeCord (or the Bukkit server if it connects directly to MySQL). The plugin can read this PEM certificate directly and generate a temporary PKCS12 truststore; running `keytool` is not required.
-3. Alternatively, set `MCORE_MYSQL_CA_CERT` to the absolute path of the downloaded PEM file.
-4. Set `MCORE_MYSQL_PASSWORD` in the environment of the actual Java process. Restart the process after changing environment variables.
+| Dependência | Escopo/uso |
+| --- | --- |
+| Spigot 1.8.8 | `compileOnly`; fornecido pelo servidor |
+| BungeeCord API 1.8 | `compileOnly`; fornecida pelo proxy |
+| ProtocolLib 4.5.0 | `compileOnly`; precisa estar no servidor Bukkit |
+| PlaceholderAPI 2.10.5 | `compileOnly`; precisa estar no servidor Bukkit |
+| Lombok | Processador de anotações |
+| HikariCP 3.4.5 | Runtime |
+| MySQL Connector/J 8.0.33 | Runtime |
+| Inventory API | Runtime, com pacote relocacionado |
+| JUnit/Gson | Dependências de teste |
 
-The previous PKCS12 method remains supported: set both `MCORE_MYSQL_TRUSTSTORE` and `MCORE_MYSQL_TRUSTSTORE_PASSWORD`. When a CA PEM file is present, it takes precedence and is converted into a temporary truststore for the JDBC connection.
+A implementação Bukkit verifica a versão do PlaceholderAPI em runtime e espera 2.10.5. A instalação BungeeCord usa o descritor próprio e deve ser testada separadamente do ambiente Bukkit.
 
-For the existing installation, the config file is usually `plugins/mCore/config.yml`; the checked-in resource only supplies defaults for new installations. Confirm it contains the current Aiven host, port, database, and username. Do not put the database password in the repository or in a version-controlled YAML file. Rotate passwords that have been exposed.
+## 5. Maven legado
 
-If the Aiven CA file is missing, the plugin now fails early with an explicit configuration message instead of proceeding to an opaque TLS handshake failure. TLS certificate and hostname verification remain enabled.
+O arquivo `pom.xml` continua no repositório como referência durante a transição. Ele contém configurações históricas, incluindo caminho absoluto de BungeeCord específico de máquina e versões antigas de algumas dependências.
+
+Não use esse POM como build canônico nem presuma que ele funcione em outra máquina sem revisão. A compilação documentada e configurada no workflow é feita com Gradle. Remover o POM deve ocorrer somente após a validação completa do build Gradle e do processo de release.
+
+## 6. Configuração do banco MySQL
+
+Na primeira inicialização, o plugin copia `src/main/resources/config.yml` para `plugins/mCore/config.yml`. Configure:
+
+```yaml
+database:
+  mysql:
+    host: "127.0.0.1"
+    porta: "3306"
+    nome: "mcore"
+    usuario: "mcore"
+    senha: ""
+```
+
+A senha pode ser fornecida pela variável de ambiente `MCORE_MYSQL_PASSWORD`. Ela tem precedência sobre `database.mysql.senha`. Prefira fornecer a senha no ambiente do processo Java, sem registrá-la em arquivos versionados, argumentos de processo ou logs.
+
+Use um usuário MySQL exclusivo para o mCore, com privilégios apenas no schema que ele utiliza. A aplicação cria as tabelas e executa as migrações no startup, portanto a conta precisa ter as permissões DDL e DML necessárias durante a implantação. Em operação, reveja se esses privilégios podem ser reduzidos após a preparação do schema.
+
+### TLS e certificado CA
+
+A conexão JDBC usa `sslMode=VERIFY_IDENTITY`: o tráfego é criptografado, a cadeia do certificado é validada e o hostname precisa corresponder ao certificado. Não configure `sslMode=DISABLED` nem aceite certificados arbitrários.
+
+Para uma instância Aiven:
+
+1. Abra o serviço MySQL no console do provedor.
+2. Baixe o certificado CA em *Overview → Connection information*.
+3. Salve como `plugins/mCore/ca.pem` no host do processo Java, ou defina `MCORE_MYSQL_CA_CERT` com o caminho absoluto para o PEM.
+4. Reinicie o processo Java depois de alterar as variáveis.
+
+O código também mantém o caminho de truststore PKCS12: configure `MCORE_MYSQL_TRUSTSTORE` e `MCORE_MYSQL_TRUSTSTORE_PASSWORD`. Quando a CA PEM está disponível, ela tem precedência sobre o truststore configurado.
+
+Se a CA estiver ausente ou o hostname não corresponder, corrija a configuração do certificado/DNS. Não desative a validação TLS como solução temporária.
+
+## 7. Configurações de execução
+
+Os principais arquivos são copiados para `plugins/mCore/`:
+
+| Arquivo | Uso |
+| --- | --- |
+| `config.yml` | Host, porta, schema e usuário MySQL |
+| `core.yml` | Spawn, proteção, permissão VIP e intervalos de limpeza |
+| `roles.yml` | Definição de cargos, prefixos, permissões e visibilidade |
+| `utils.yml` | Opções auxiliares, incluindo comportamentos de fake players |
+| `deliveries.yml` | Recompensas/entregas |
+| `titles.yml` | Títulos personalizados |
+
+Os nomes e estruturas exatos podem evoluir conforme o código. Use os arquivos gerados pela mesma versão do JAR que será executada.
+
+## 8. Integração contínua
+
+O workflow de build executa checkout, configura Java 8, prepara Spigot 1.8.8, roda os testes Python do importador e compila o plugin com Gradle Wrapper. O artefato esperado é `build/libs/mCore.jar`.
+
+Um workflow definido no repositório não significa que o build atual foi aprovado. Verifique o resultado da execução associada ao commit antes de promover o JAR para produção.
+

@@ -1,79 +1,134 @@
-# Migração de dados MongoDB → MySQL/HikariCP
+# Migração de dados: MongoDB para MySQL
 
-O código de produção do mCore agora usa somente MySQL por HikariCP. **Não remova a base MongoDB nem seus backups até concluir a importação e as verificações descritas aqui.** A ferramenta é offline e não é empacotada no plugin; ela lê exports JSONL gerados por `mongoexport`, sem incluir MongoDB driver no runtime.
+A branch inclui um importador offline para transferir dados de exports JSONL do MongoDB legado para o schema MySQL utilizado pelo mCore. O importador fica em `tools/migrate_mongodb_export.py`, não é empacotado no plugin e não usa MongoDB Driver no runtime.
 
-## 1. Faça backups antes de alterar o ambiente
+**Não remova o banco MongoDB nem os backups de origem até que a importação e a validação funcional tenham sido concluídas e aprovadas.**
 
-1. Faça um backup consistente do banco MySQL de destino, se ele já existir.
-2. Faça um backup consistente de MongoDB e confirme que os arquivos exportados são legíveis.
-3. Use uma janela de manutenção ou impeça gravações concorrentes no sistema de origem durante os exports e a importação.
-4. Não versione arquivos de export, credenciais, URIs com senha ou dumps reais de jogadores.
+## 1. O que a ferramenta importa
 
-## 2. Exporte as três coleções
+A ferramenta lê três coleções exportadas com `mongoexport`:
 
-Use uma versão compatível do MongoDB Database Tools e exporte no formato padrão JSONL (um documento JSON por linha; **não** use `--jsonArray`):
+| Coleção de origem | Destino |
+| --- | --- |
+| `Profile` | `mCoreProfile`, `mCoreSkyWars`, `mCoreTheBridge`, `mCoreMurder` |
+| `mCoreTitles` | `mCoreTitles` |
+| `mCoreNetworkBooster` | `mCoreNetworkBooster` |
 
-```sh
+As tabelas de perfil são criadas pelo próprio mCore a partir das definições em `DataTable`. O importador exige as seis tabelas de destino, consulta `INFORMATION_SCHEMA` e valida os nomes das colunas antes de escrever.
+
+Campos derivados de leaderboard (`totalkills`, `totalwins` e `totalpoints`) são ignorados no mapeamento porque o backend SQL calcula os rankings a partir das colunas de estatísticas. Campos desconhecidos ou sem mapeamento interrompem a execução em vez de serem descartados silenciosamente.
+
+## 2. Preparar backups e janela de migração
+
+Antes de começar:
+
+1. Faça backup consistente do MongoDB de origem.
+2. Faça backup do MySQL de destino, se ele já tiver dados.
+3. Confirme que os arquivos exportados são legíveis e que há espaço suficiente para o banco e os arquivos temporários.
+4. Planeje uma janela sem gravações concorrentes na origem durante o export.
+5. Use uma instância de homologação primeiro.
+6. Não versione exports, dumps reais de jogadores, URI com senha ou credenciais.
+
+Não execute a importação enquanto servidores estiverem gravando no mesmo banco de destino.
+
+## 3. Exportar as coleções
+
+Use uma versão compatível do MongoDB Database Tools. O formato deve ser JSONL padrão, com um documento JSON por linha. Não use `--jsonArray`.
+
+```bash
 mongoexport --uri "$MCORE_MONGODB_URI" --db mCore --collection Profile --out ./Profile.jsonl
 mongoexport --uri "$MCORE_MONGODB_URI" --db mCore --collection mCoreTitles --out ./mCoreTitles.jsonl
 mongoexport --uri "$MCORE_MONGODB_URI" --db mCore --collection mCoreNetworkBooster --out ./mCoreNetworkBooster.jsonl
 ```
 
-Configure `MCORE_MONGODB_URI` fora do repositório e não imprima seu valor em logs. O script espera esses três exports, inclusive arquivos vazios quando a coleção não tem documentos.
+Configure `MCORE_MONGODB_URI` no ambiente, sem imprimir seu valor em logs. Se uma coleção estiver vazia, forneça um arquivo JSONL vazio para ela.
 
-## 3. Prepare o destino
+O script reconhece valores comuns do Extended JSON, como `$numberLong`, `$numberInt`, `$numberDouble`, `$numberDecimal`, `$oid` e `$date`.
 
-Configure o plugin com os dados MySQL corretos e TLS configurado para que o certificado corresponda ao hostname usado na conexão. Inicie uma vez uma versão compatível do mCore para que ela crie/atualize `mCoreProfile`, `mCoreSkyWars`, `mCoreTheBridge`, `mCoreMurder`, `mCoreNetworkBooster` e `mCoreTitles`; depois desligue o servidor antes de executar a importação.
+## 4. Preparar o schema MySQL
 
-O importador exige as seis tabelas e valida as colunas contra o schema real. Se encontrar colunas sem mapeamento, ele para com erro para evitar descartar silenciosamente dados.
+Configure a conexão MySQL do mCore e o TLS. Inicie uma vez uma versão compatível do plugin para que ele crie ou atualize as tabelas:
 
-## 4. Execute a ferramenta offline
+- `mCoreProfile`;
+- `mCoreSkyWars`;
+- `mCoreTheBridge`;
+- `mCoreMurder`;
+- `mCoreNetworkBooster`;
+- `mCoreTitles`.
 
-Instale o cliente Python apenas no ambiente de migração:
+Depois, desligue todos os processos mCore que apontam para o banco de destino antes de executar a importação. Isso evita que a aplicação altere os registros durante o processo.
 
-```sh
-python -m pip install mysql-connector-python
-```
+O importador precisa de um usuário de banco com permissão de leitura do schema e de escrita nas tabelas de destino. Configure as variáveis no ambiente de migração:
 
-Configure as variáveis do destino. Não passe senhas como argumentos nem as registre no terminal:
-
-```sh
+```bash
 export MCORE_MYSQL_HOST="db.example.internal"
 export MCORE_MYSQL_PORT="3306"
-export MCORE_MYSQL_DATABASE="server"
+export MCORE_MYSQL_DATABASE="mcore"
 export MCORE_MYSQL_USER="mcore_migration"
 export MCORE_MYSQL_PASSWORD="..."
-# Opcional: caminho para CA personalizada que valida o certificado do servidor.
+# Opcional: caminho da CA do servidor.
 export MCORE_MYSQL_SSL_CA="/caminho/seguro/ca.pem"
 ```
 
-Primeiro execute em modo de validação sem escrita:
+O importador é um processo Python independente. Ele usa `mysql-connector-python`; a variável `MCORE_MYSQL_SSL_CA` pertence a essa ferramenta e não é a mesma configuração de CA usada pelo plugin Java.
 
-```sh
-python tools/migrate_mongodb_export.py --profiles ./Profile.jsonl --titles ./mCoreTitles.jsonl --boosters ./mCoreNetworkBooster.jsonl --dry-run
+## 5. Instalar a dependência Python
+
+```bash
+python -m pip install mysql-connector-python
 ```
 
-Revise os erros e o mapeamento. Depois faça a importação padrão:
+Prefira um ambiente virtual isolado para não misturar dependências da ferramenta de migração com o ambiente de build do plugin.
 
-```sh
-python tools/migrate_mongodb_export.py --profiles ./Profile.jsonl --titles ./mCoreTitles.jsonl --boosters ./mCoreNetworkBooster.jsonl
+## 6. Validar sem escrever
+
+Execute primeiro com `--dry-run`:
+
+```bash
+python tools/migrate_mongodb_export.py \
+  --profiles ./Profile.jsonl \
+  --titles ./mCoreTitles.jsonl \
+  --boosters ./mCoreNetworkBooster.jsonl \
+  --dry-run
 ```
 
-O modo padrão usa `INSERT IGNORE`: não sobrescreve registros já existentes e pode ser executado novamente. Use `--overwrite` somente após backup e decisão explícita, pois ele atualiza as linhas existentes com os dados do export.
+O modo de validação conecta ao MySQL, inspeciona as seis tabelas, confere o mapeamento e reporta a quantidade de documentos e linhas planejadas. Ele não grava os registros. Corrija todos os erros antes de executar a importação.
 
-## 5. Verifique antes do corte
+## 7. Importar
 
-O relatório mostra documentos de origem, linhas tentadas, linhas afetadas e contagens por tabela antes/depois. Compare esses números com o MongoDB, valide manualmente uma amostra de perfis, preferências, títulos, boosters e estatísticas e teste login, carregamento/salvamento e leaderboards no servidor de homologação.
+A importação padrão usa `INSERT IGNORE`: linhas já existentes não são substituídas. Isso torna a execução repetível após falhas parciais, mas não é uma transação global. O script confirma lotes de até 200 linhas; se falhar no meio, lotes anteriores podem já ter sido gravados.
 
-O relatório de contagens não prova sozinho equivalência funcional. Faça também uma comparação de valores e teste os fluxos reais de Bukkit/BungeeCord antes de direcionar tráfego de produção para o banco migrado.
+```bash
+python tools/migrate_mongodb_export.py \
+  --profiles ./Profile.jsonl \
+  --titles ./mCoreTitles.jsonl \
+  --boosters ./mCoreNetworkBooster.jsonl
+```
 
-Se a importação falhar após alguns lotes, o script pode já ter confirmado lotes anteriores. O modo padrão é repetível; corrija a causa e execute novamente. Preserve os backups de origem e destino até que as verificações sejam aceitas.
+A opção `--overwrite` atualiza colunas de registros existentes e deve ser usada somente após backup, revisão de amostras e aprovação explícita. Não execute essa opção como tentativa genérica de corrigir contagens.
 
-## O que a ferramenta mapeia
+## 8. Conferir o resultado
 
-- Coleção `Profile`: campos de perfil para `mCoreProfile` e subdocumentos para `mCoreSkyWars`, `mCoreTheBridge` e `mCoreMurder`.
-- Coleção `mCoreNetworkBooster`: `_id` para `id`, além de `booster`, `multiplier` e `expires`.
-- Coleção `mCoreTitles`: `_id` para `id`, além de `name` e `description`.
-- Valores derivados `totalkills`, `totalwins` e `totalpoints` são ignorados porque o backend SQL calcula leaderboards a partir das colunas de estatísticas.
+O relatório apresenta documentos de origem, linhas tentadas, linhas afetadas e contagens por tabela antes/depois. Esses números são necessários, mas não provam equivalência funcional.
 
-Se os schemas de origem tiverem campos adicionais não mapeados, a ferramenta interrompe a importação. Não altere o script para ignorar esses campos sem identificar como preservá-los no modelo SQL.
+Compare valores reais de uma amostra representativa:
+- perfil geral, cash, cargo e preferências;
+- estatísticas SkyWars, The Bridge e Murder;
+- títulos personalizados;
+- boosters ativos, expirados e ausentes;
+- valores vazios/nulos e documentos com campos opcionais.
+
+Depois, em homologação, teste login/entrada, carregamento e salvamento de perfil, preferências, leaderboards, entregas, títulos, boosters, filas e transferência entre servidores Bukkit/BungeeCord.
+
+Mantenha backups de origem e destino até que todas as verificações sejam aceitas.
+
+## 9. Limitações e recuperação
+
+- O importador não cria o schema; uma versão compatível do mCore precisa inicializar as tabelas antes.
+- O script importa exports JSONL, não conecta diretamente ao MongoDB.
+- O modo padrão não sobrescreve linhas existentes.
+- A importação é confirmada em lotes e pode ficar parcialmente concluída após falha.
+- Campos não mapeados causam erro intencionalmente; não remova essa validação sem planejar como preservar os dados.
+- O relatório de contagem não substitui validação de conteúdo e testes de uso.
+- Não apague o MongoDB antigo até que o sistema esteja operando normalmente com o MySQL migrado e os backups tenham sido verificados.
+

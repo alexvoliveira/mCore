@@ -1,34 +1,71 @@
-# mCore — estado da refatoração
+# Estado da implementação
 
-Esta branch está em refatoração incremental e **não deve ser implantada em produção até a validação completa do build e dos dados**.
+Este documento registra o que foi encontrado no código e separa implementação de validação operacional. A presença de uma classe, script ou workflow não significa que o fluxo completo foi aprovado em produção.
 
-## Implementado no código de produção
+## Implementado na branch consolidada
 
-- Um único backend de persistência: MySQL por HikariCP.
-- Remoção das classes de produção `MongoDBDatabase`, `MySQLDatabase` sem pool e do conversor online MySQL→MongoDB.
-- Títulos personalizados lidos da tabela SQL `mCoreTitles`; tabelas de perfil continuam em `mCoreProfile`, `mCoreSkyWars`, `mCoreTheBridge`, `mCoreMurder` e `mCoreNetworkBooster`.
-- Configuração JDBC com `sslMode=VERIFY_IDENTITY` e nome de driver do Connector/J 8.
-- Consultas de alterações legadas de schema encaminhadas pelo contrato comum `Database`.
-- Escrita assíncrona serializada por um executor único para manter a ordem de submissão de operações; a análise de perda de atualizações e backpressure ainda precisa ser concluída.
-- Comando de conversão online removido; há agora um importador offline baseado em exports JSONL, sem MongoDB driver no plugin.
-- Desativação de instalação automática de JARs sem validação criptográfica e de encerramento do processo com `System.exit(0)`.
-- Scaffold Gradle Kotlin DSL e documentação inicial.
+### Persistência
+- O caminho de persistência usado pelo código de produção é MySQL por HikariCP.
+- O contrato comum está em `Database`; a implementação concreta está em `HikariDatabase`.
+- O schema é construído a partir das classes `DataTable` e evoluído por `SchemaMigrator`.
+- O perfil é salvo por snapshots dos campos alterados, em transações.
+- As gravações assíncronas usam um writer serializado e uma fila limitada.
+- Falhas de gravação podem ser retidas para nova tentativa, inclusive por arquivos em `plugins/mCore/pending-saves`.
 
-## Evidências e validação
+### Segurança e ciclo de vida
+- A conexão JDBC usa validação TLS de certificado e hostname.
+- A senha pode vir da variável `MCORE_MYSQL_PASSWORD`.
+- A inicialização Bukkit valida a versão NMS e encerra o plugin se a versão não for compatível.
+- A instalação automática de JARs não confiáveis e a finalização do processo via `System.exit(0)` foram removidas do fluxo descrito pela refatoração.
+- O encerramento tenta salvar perfis ativos e retidos, fechar filas, remover listeners e encerrar conexões.
 
-- Commits publicados e diff remoto conferidos na branch de revisão.
-- A compilação Gradle neste ambiente de edição **não foi executada**. Foi adicionado um workflow do GitHub Actions que gera os artefatos Spigot 1.8.8 e executa o Wrapper/testes; o resultado precisa ser consultado antes de considerar a validação concluída.
-- Os testes de integração com Spigot/Bukkit 1.8.8, NMS `v1_8_R3`, BungeeCord, MySQL e migração de dados não foram executados; testes unitários da ferramenta offline foram adicionados ao workflow.
-- O `pom.xml` permanece temporariamente para referência/rollback até que o build Gradle possa ser validado. Ele ainda precisa ser eliminado conforme o plano original.
+### Build e migração
+- Há configuração Gradle Kotlin DSL e Wrapper.
+- O workflow configura Java 8, prepara Spigot 1.8.8, executa os testes Python do importador e compila o JAR.
+- O importador offline recebe exports JSONL do MongoDB e valida o schema MySQL antes da escrita.
+- A documentação do build, da migração e da arquitetura está versionada.
 
-## Pendências que bloqueiam a conclusão
+## O que ainda precisa ser validado
 
-1. Executar `./gradlew clean build` em ambiente com JDK/Gradle compatíveis e artefatos corretos de Spigot 1.8.8/NMS e BungeeCord 1.8.
-2. Validar o importador com backups representativos, comparando contagens, perfis, títulos, boosters e amostras de estatísticas.
-3. Revisar atomicidade, erro em escritas assíncronas, fechamento do executor e concorrência de `Profile`/fila.
-4. Testar ciclo de vida de pré-login, entrada/saída, salvamento, transferência de servidores e desligamento.
-5. Confirmar o resultado do workflow de build/testes; um job em execução não conta como validação aprovada.
-6. Remover o `pom.xml` e os resíduos de build antigos somente após a validação do Gradle.
-6. Fazer revisão final de referências remanescentes, SQL dinâmico e compatibilidade de APIs antigas.
+### Build e dependências
+- Consultar o resultado real do workflow na revisão que será publicada. A existência do workflow não comprova que o build passou.
+- Executar `./gradlew --no-daemon clean build` em ambiente com JDK 8 e artefatos corretos do Spigot 1.8.8/NMS.
+- Confirmar que a API BungeeCord usada pelo código continua compatível com a versão de proxy do ambiente.
+- Validar o JAR gerado em servidores Bukkit e BungeeCord separados.
 
-A branch ainda não foi mesclada a `main`.
+### Banco e gravação
+- Testar carga, saturação da fila de escrita, rejeição de tarefas, encerramento durante gravações e recuperação dos snapshots pendentes.
+- Verificar permissões reais do usuário MySQL e o comportamento de TLS com o certificado/hostname do ambiente.
+- Confirmar as migrações em uma cópia do schema de produção antes de conectar servidores.
+
+### Migração de dados
+- Executar `--dry-run` com exports representativos.
+- Comparar contagens e valores de uma amostra de perfis.
+- Testar a importação em homologação, incluindo recuperação após falhas parciais.
+- Validar os fluxos do jogo usando os dados importados.
+
+### Integração funcional
+- Testar entrada/saída e carregamento de perfis.
+- Testar salvamento, fila VIP/membro e transferência de servidor.
+- Testar comandos, cargos, fake players, parties, NPCs, hologramas, hotbar, scoreboards, títulos, entregas, boosters e conquistas.
+- Testar o fluxo Bukkit ↔ BungeeCord com as versões exatas do proxy e plugins externos instalados.
+
+## Pendências conhecidas
+
+1. O `pom.xml` histórico continua no repositório como referência e deve ser removido somente depois que o build Gradle e o processo de release estiverem validados.
+2. A revisão de concorrência/perda de atualização de snapshots de perfil precisa de testes de estresse e integração.
+3. A migração do banco real exige procedimento operacional, backup e reconciliação de dados; não é coberta apenas por testes unitários do script.
+4. A implementação permanece dependente de Spigot 1.8.8, NMS `v1_8_R3` e APIs antigas de BungeeCord/ProtocolLib/PlaceholderAPI.
+5. A revisão deste documento não é pentest, auditoria formal, nem garantia de ausência de defeitos.
+
+## Critério para considerar pronto
+
+A refatoração só deve ser considerada pronta para produção depois de:
+
+- workflow de build/teste aprovado no commit final;
+- instalação de homologação validada nos dois ambientes (Bukkit e BungeeCord);
+- migração de dados reconciliada e aprovada;
+- testes funcionais e de encerramento aprovados;
+- monitoramento de erros de banco e diretório de snapshots pendentes configurados;
+- backup e plano de rollback testados.
+

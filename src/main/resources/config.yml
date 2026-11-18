@@ -1,9 +1,10 @@
 database:
   mysql:
-    # Aiven endpoint. Keep credentials out of version control.
-    host: 'mysql-3d5c256-alexan-d4d5.l.aivencloud.com'
-    porta: '13402'
-    nome: 'defaultdb'
-    usuario: 'avnadmin'
-    # MCORE_MYSQL_PASSWORD environment variable overrides this value.
+    # Configure o host/porta/schema/usuário do seu ambiente.
+    # Não versione endereço ou credenciais do banco de produção.
+    host: '127.0.0.1'
+    porta: '3306'
+    nome: 'mcore'
+    usuario: 'mcore'
+    # MCORE_MYSQL_PASSWORD tem precedência sobre este valor.
     senha: ''
